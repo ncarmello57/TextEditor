@@ -1,0 +1,54 @@
+{
+  "name": "texteditor",
+  "version": "1.0.0",
+  "description": "Advanced Text Editor with syntax highlighting",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "tsc && electron .",
+    "dist:win": "npm run build && electron-builder --win --dir",
+    "dist:mac": "npm run build && electron-builder --mac --dir",
+    "pack:win": "npm run build && electron-builder --win"
+  },
+  "keywords": [
+    "text-editor",
+    "electron",
+    "codemirror"
+  ],
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.texteditor.app",
+    "productName": "Text Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/index.html",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "mac": {
+      "target": ["dir"]
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "codemirror": "^5.65.20",
+    "iconv-lite": "^0.7.2"
+  }
+}
