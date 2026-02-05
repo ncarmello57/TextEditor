@@ -243,6 +243,85 @@
     .hidden {
       display: none !important;
     }
+
+    /* Light theme styles */
+    body.light-theme {
+      background-color: #ffffff;
+      color: #333333;
+    }
+
+    body.light-theme #toolbar {
+      background-color: #f0f0f0;
+      border-bottom-color: #cccccc;
+    }
+
+    body.light-theme #toolbar button {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
+    body.light-theme #toolbar button:hover {
+      background-color: #d0d0d0;
+    }
+
+    body.light-theme .toolbar-separator {
+      background-color: #cccccc;
+    }
+
+    body.light-theme #files-panel {
+      background-color: #f5f5f5;
+      border-right-color: #cccccc;
+    }
+
+    body.light-theme #files-panel-header {
+      color: #666666;
+      border-bottom-color: #cccccc;
+    }
+
+    body.light-theme .file-item:hover {
+      background-color: #e8e8e8;
+    }
+
+    body.light-theme .file-item.active {
+      background-color: #e0e0e0;
+    }
+
+    body.light-theme .file-item.modified {
+      color: #c62828;
+    }
+
+    body.light-theme .file-close {
+      color: #666666;
+    }
+
+    body.light-theme .file-close:hover {
+      background-color: #d0d0d0;
+      color: #333333;
+    }
+
+    body.light-theme #no-file-message {
+      color: #999999;
+    }
+
+    body.light-theme .modal {
+      background-color: #ffffff;
+      border-color: #cccccc;
+    }
+
+    body.light-theme .modal h3 {
+      color: #333333;
+    }
+
+    body.light-theme .modal p {
+      color: #666666;
+    }
+
+    body.light-theme .modal-buttons .btn-secondary {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
   </style>
 </head>
 <body>
@@ -254,6 +333,10 @@
     <div class="toolbar-separator"></div>
     <button id="btn-reload">Reload</button>
     <button id="btn-close">Close</button>
+    <div class="toolbar-separator"></div>
+    <button id="btn-format">Format</button>
+    <div class="toolbar-separator"></div>
+    <button id="btn-theme">Light Theme</button>
   </div>
 
   <div id="main-container">
@@ -317,6 +400,7 @@
     let fileIdCounter = 0;
     let pendingCloseAction = null; // { type: 'close' | 'closeAll', fileId }
     let isLoadingContent = false; // Flag to suppress dirty marking during programmatic content changes
+    let isDarkTheme = true; // Theme state
 
     // Initialize CodeMirror
     const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
@@ -355,6 +439,8 @@
     document.getElementById('btn-save-as').addEventListener('click', saveFileAs);
     document.getElementById('btn-reload').addEventListener('click', reloadFile);
     document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
+    document.getElementById('btn-format').addEventListener('click', formatDocument);
+    document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
     // Modal buttons
     document.getElementById('modal-cancel').addEventListener('click', () => {
@@ -457,6 +543,7 @@
 
         document.getElementById('editor-container').classList.remove('hidden');
         document.getElementById('no-file-message').classList.add('hidden');
+        editor.refresh();
 
         updateTitle();
         updateEncoding(file.encoding.toUpperCase());
@@ -628,6 +715,149 @@
 
     function hideModal() {
       document.getElementById('save-modal').classList.add('hidden');
+    }
+
+    function toggleTheme() {
+      isDarkTheme = !isDarkTheme;
+      const btn = document.getElementById('btn-theme');
+
+      if (isDarkTheme) {
+        document.body.classList.remove('light-theme');
+        editor.setOption('theme', 'material-darker');
+        btn.textContent = 'Light Theme';
+      } else {
+        document.body.classList.add('light-theme');
+        editor.setOption('theme', 'default');
+        btn.textContent = 'Dark Theme';
+      }
+    }
+
+    function formatDocument() {
+      const file = getActiveFile();
+      if (!file) {
+        updateStatus('No file open');
+        return;
+      }
+
+      const content = editor.getValue();
+      const language = file.language;
+      let formatted;
+
+      try {
+        if (language === 'json') {
+          formatted = formatJSON(content);
+        } else if (language === 'xml') {
+          formatted = formatXML(content);
+        } else if (language === 'html') {
+          formatted = formatHTML(content);
+        } else {
+          updateStatus('Format not supported for this file type');
+          return;
+        }
+
+        if (formatted !== null) {
+          isLoadingContent = true;
+          editor.setValue(formatted);
+          isLoadingContent = false;
+          file.isDirty = true;
+          updateFilesList();
+          updateTitle();
+          updateStatus('Document formatted');
+        }
+      } catch (err) {
+        updateStatus('Format error: ' + err.message);
+      }
+    }
+
+    function formatJSON(content) {
+      const parsed = JSON.parse(content);
+      return JSON.stringify(parsed, null, 2);
+    }
+
+    function formatXML(content) {
+      const PADDING = '  ';
+      let formatted = '';
+      let indent = 0;
+
+      // Remove existing whitespace between tags
+      const xml = content.replace(/>\s*</g, '><').trim();
+
+      xml.split(/(<[^>]+>)/g).forEach(node => {
+        if (!node.trim()) return;
+
+        if (node.match(/^<\?/)) {
+          // XML declaration
+          formatted += node + '\n';
+        } else if (node.match(/^<\//)) {
+          // Closing tag
+          indent--;
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else if (node.match(/^<[^/].*[^/]>$/)) {
+          // Opening tag (not self-closing)
+          formatted += PADDING.repeat(indent) + node + '\n';
+          indent++;
+        } else if (node.match(/^<.*\/>$/)) {
+          // Self-closing tag
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else if (node.match(/^</)) {
+          // Other tags
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else {
+          // Text content
+          if (node.trim()) {
+            formatted += PADDING.repeat(indent) + node.trim() + '\n';
+          }
+        }
+      });
+
+      return formatted.trim();
+    }
+
+    function formatHTML(content) {
+      const PADDING = '  ';
+      let formatted = '';
+      let indent = 0;
+
+      // Inline elements that shouldn't force newlines
+      const inlineElements = ['a', 'span', 'strong', 'em', 'b', 'i', 'u', 'small', 'code', 'br', 'img'];
+      // Void elements (self-closing)
+      const voidElements = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+
+      // Remove existing whitespace between tags
+      const html = content.replace(/>\s+</g, '><').trim();
+
+      html.split(/(<[^>]+>)/g).forEach(node => {
+        if (!node.trim()) return;
+
+        const tagMatch = node.match(/^<\/?(\w+)/);
+        const tagName = tagMatch ? tagMatch[1].toLowerCase() : '';
+
+        if (node.match(/^<!DOCTYPE/i)) {
+          // DOCTYPE
+          formatted += node + '\n';
+        } else if (node.match(/^<!--/)) {
+          // Comment
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else if (node.match(/^<\//)) {
+          // Closing tag
+          indent = Math.max(0, indent - 1);
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else if (node.match(/^<[^/]/) && !voidElements.includes(tagName)) {
+          // Opening tag (not void)
+          formatted += PADDING.repeat(indent) + node + '\n';
+          indent++;
+        } else if (node.match(/^</)) {
+          // Void/self-closing tag
+          formatted += PADDING.repeat(indent) + node + '\n';
+        } else {
+          // Text content
+          if (node.trim()) {
+            formatted += PADDING.repeat(indent) + node.trim() + '\n';
+          }
+        }
+      });
+
+      return formatted.trim();
     }
 
     function updateTitle() {
