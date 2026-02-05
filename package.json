@@ -33,12 +33,16 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
     "mac": {
-      "target": ["dir"]
+      "target": [
+        "dir"
+      ]
     }
   },
   "devDependencies": {
@@ -50,5 +54,14 @@
   "dependencies": {
     "codemirror": "^5.65.20",
     "iconv-lite": "^0.7.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ncarmello57/TextEditor.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ncarmello57/TextEditor/issues"
+  },
+  "homepage": "https://github.com/ncarmello57/TextEditor#readme"
 }

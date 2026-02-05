@@ -316,6 +316,7 @@
     let activeFileId = null;
     let fileIdCounter = 0;
     let pendingCloseAction = null; // { type: 'close' | 'closeAll', fileId }
+    let isLoadingContent = false; // Flag to suppress dirty marking during programmatic content changes
 
     // Initialize CodeMirror
     const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
@@ -332,6 +333,7 @@
 
     // Track changes
     editor.on('change', () => {
+      if (isLoadingContent) return; // Skip during programmatic content loading
       const file = getActiveFile();
       if (file && !file.isDirty) {
         file.isDirty = true;
@@ -447,7 +449,9 @@
       const file = getFileById(id);
 
       if (file) {
+        isLoadingContent = true;
         editor.setValue(file.content);
+        isLoadingContent = false;
         const mode = getCodeMirrorMode(file.language);
         editor.setOption('mode', mode);
 
@@ -568,7 +572,9 @@
           file.content = data.content;
           file.encoding = data.encoding;
           file.isDirty = false;
+          isLoadingContent = true;
           editor.setValue(file.content);
+          isLoadingContent = false;
           updateFilesList();
           updateTitle();
           updateEncoding(file.encoding.toUpperCase());
