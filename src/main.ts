@@ -242,6 +242,15 @@ ipcMain.handle('save-file-dialog', async (_, data: { content: string; encoding: 
   return { success: false, canceled: true };
 });
 
+ipcMain.handle('reload-file', async (_, data: { filePath: string }) => {
+  try {
+    const fileData = await readFileWithEncoding(data.filePath);
+    return fileData;
+  } catch (error) {
+    return null;
+  }
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

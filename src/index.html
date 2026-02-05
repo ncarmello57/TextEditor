@@ -45,6 +45,98 @@
       background-color: #4c4c4c;
     }
 
+    .toolbar-separator {
+      width: 1px;
+      background-color: #505050;
+      margin: 0 4px;
+    }
+
+    #main-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #files-panel {
+      width: 200px;
+      background-color: #252526;
+      border-right: 1px solid #404040;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #files-panel-header {
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #888;
+      border-bottom: 1px solid #404040;
+    }
+
+    #files-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      border-left: 3px solid transparent;
+    }
+
+    .file-item:hover {
+      background-color: #2a2d2e;
+    }
+
+    .file-item.active {
+      background-color: #37373d;
+      border-left-color: #007acc;
+    }
+
+    .file-item.modified {
+      color: #e57373;
+    }
+
+    .file-item.modified .file-name::after {
+      content: ' •';
+    }
+
+    .file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-close {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      opacity: 0;
+      font-size: 14px;
+      color: #888;
+    }
+
+    .file-item:hover .file-close {
+      opacity: 1;
+    }
+
+    .file-close:hover {
+      background-color: #404040;
+      color: #fff;
+    }
+
+    .file-item.modified .file-close {
+      display: none;
+    }
+
     #editor-container {
       flex: 1;
       overflow: hidden;
@@ -74,6 +166,83 @@
       display: flex;
       gap: 20px;
     }
+
+    #no-file-message {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-size: 16px;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background-color: #2d2d2d;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      padding: 20px;
+      min-width: 300px;
+      max-width: 400px;
+    }
+
+    .modal h3 {
+      margin-bottom: 12px;
+      color: #d4d4d4;
+    }
+
+    .modal p {
+      margin-bottom: 20px;
+      color: #999;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal-buttons button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .modal-buttons .btn-primary {
+      background-color: #007acc;
+      color: white;
+      border: none;
+    }
+
+    .modal-buttons .btn-secondary {
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+    }
+
+    .modal-buttons .btn-danger {
+      background-color: #d32f2f;
+      color: white;
+      border: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -82,10 +251,24 @@
     <button id="btn-open">Open</button>
     <button id="btn-save">Save</button>
     <button id="btn-save-as">Save As</button>
+    <div class="toolbar-separator"></div>
+    <button id="btn-reload">Reload</button>
+    <button id="btn-close">Close</button>
   </div>
 
-  <div id="editor-container">
-    <textarea id="editor"></textarea>
+  <div id="main-container">
+    <div id="files-panel">
+      <div id="files-panel-header">Open Files</div>
+      <div id="files-list"></div>
+    </div>
+
+    <div id="editor-container">
+      <textarea id="editor"></textarea>
+    </div>
+
+    <div id="no-file-message" class="hidden">
+      No file open. Click "New" or "Open" to get started.
+    </div>
   </div>
 
   <div id="statusbar">
@@ -96,6 +279,19 @@
       <span id="status-position">Ln 1, Col 1</span>
       <span id="status-encoding">UTF-8</span>
       <span id="status-language">Plain Text</span>
+    </div>
+  </div>
+
+  <!-- Save confirmation modal -->
+  <div id="save-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Unsaved Changes</h3>
+      <p id="save-modal-message">Do you want to save changes before closing?</p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn-danger" id="modal-dont-save">Don't Save</button>
+        <button class="btn-primary" id="modal-save">Save</button>
+      </div>
     </div>
   </div>
 
@@ -115,10 +311,11 @@
     require('codemirror/mode/markdown/markdown');
     require('codemirror/mode/yaml/yaml');
 
-    // State
-    let currentFilePath = null;
-    let currentEncoding = 'utf-8';
-    let isDirty = false;
+    // State - multiple files support
+    let openFiles = []; // Array of { id, filePath, content, encoding, language, isDirty }
+    let activeFileId = null;
+    let fileIdCounter = 0;
+    let pendingCloseAction = null; // { type: 'close' | 'closeAll', fileId }
 
     // Initialize CodeMirror
     const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
@@ -135,8 +332,10 @@
 
     // Track changes
     editor.on('change', () => {
-      if (!isDirty) {
-        isDirty = true;
+      const file = getActiveFile();
+      if (file && !file.isDirty) {
+        file.isDirty = true;
+        updateFilesList();
         updateTitle();
       }
     });
@@ -152,6 +351,30 @@
     document.getElementById('btn-open').addEventListener('click', openFile);
     document.getElementById('btn-save').addEventListener('click', saveFile);
     document.getElementById('btn-save-as').addEventListener('click', saveFileAs);
+    document.getElementById('btn-reload').addEventListener('click', reloadFile);
+    document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
+
+    // Modal buttons
+    document.getElementById('modal-cancel').addEventListener('click', () => {
+      hideModal();
+      pendingCloseAction = null;
+    });
+    document.getElementById('modal-dont-save').addEventListener('click', () => {
+      hideModal();
+      if (pendingCloseAction) {
+        forceCloseFile(pendingCloseAction.fileId);
+        pendingCloseAction = null;
+      }
+    });
+    document.getElementById('modal-save').addEventListener('click', async () => {
+      hideModal();
+      if (pendingCloseAction) {
+        const fileId = pendingCloseAction.fileId;
+        pendingCloseAction = null;
+        await saveFileById(fileId);
+        forceCloseFile(fileId);
+      }
+    });
 
     // IPC listeners
     ipcRenderer.on('menu-new', () => newFile());
@@ -159,16 +382,31 @@
     ipcRenderer.on('menu-save-as', () => saveFileAs());
     ipcRenderer.on('file-opened', (_, data) => loadFile(data));
 
+    function generateFileId() {
+      return ++fileIdCounter;
+    }
+
+    function getActiveFile() {
+      return openFiles.find(f => f.id === activeFileId);
+    }
+
+    function getFileById(id) {
+      return openFiles.find(f => f.id === id);
+    }
+
     function newFile() {
-      currentFilePath = null;
-      currentEncoding = 'utf-8';
-      isDirty = false;
-      editor.setValue('');
-      editor.setOption('mode', 'text/plain');
-      updateTitle();
+      const id = generateFileId();
+      const file = {
+        id,
+        filePath: null,
+        content: '',
+        encoding: 'utf-8',
+        language: 'plaintext',
+        isDirty: false
+      };
+      openFiles.push(file);
+      switchToFile(id);
       updateStatus('New file created');
-      updateEncoding('UTF-8');
-      updateLanguage('Plain Text');
     }
 
     async function openFile() {
@@ -176,38 +414,107 @@
     }
 
     function loadFile(data) {
-      console.log('Loading file:', data.filePath);
-      currentFilePath = data.filePath;
-      currentEncoding = data.encoding;
-      isDirty = false;
+      // Check if file is already open
+      const existingFile = openFiles.find(f => f.filePath === data.filePath);
+      if (existingFile) {
+        switchToFile(existingFile.id);
+        updateStatus('File already open');
+        return;
+      }
 
-      editor.setValue(data.content);
-
-      // Set the language mode based on file type
-      const mode = getCodeMirrorMode(data.language);
-      editor.setOption('mode', mode);
-
-      updateTitle();
+      const id = generateFileId();
+      const file = {
+        id,
+        filePath: data.filePath,
+        content: data.content,
+        encoding: data.encoding,
+        language: data.language,
+        isDirty: false
+      };
+      openFiles.push(file);
+      switchToFile(id);
       updateStatus('Opened: ' + path.basename(data.filePath));
-      updateEncoding(data.encoding.toUpperCase());
-      updateLanguage(getLanguageDisplayName(data.language));
+    }
+
+    function switchToFile(id) {
+      // Save current file content
+      const currentFile = getActiveFile();
+      if (currentFile) {
+        currentFile.content = editor.getValue();
+      }
+
+      activeFileId = id;
+      const file = getFileById(id);
+
+      if (file) {
+        editor.setValue(file.content);
+        const mode = getCodeMirrorMode(file.language);
+        editor.setOption('mode', mode);
+
+        document.getElementById('editor-container').classList.remove('hidden');
+        document.getElementById('no-file-message').classList.add('hidden');
+
+        updateTitle();
+        updateEncoding(file.encoding.toUpperCase());
+        updateLanguage(getLanguageDisplayName(file.language));
+      }
+
+      updateFilesList();
+      editor.focus();
     }
 
     async function saveFile() {
-      if (!currentFilePath) {
+      const file = getActiveFile();
+      if (!file) return;
+
+      file.content = editor.getValue();
+
+      if (!file.filePath) {
         await saveFileAs();
         return;
       }
 
-      const content = editor.getValue();
       const result = await ipcRenderer.invoke('save-file', {
-        filePath: currentFilePath,
-        content,
-        encoding: currentEncoding
+        filePath: file.filePath,
+        content: file.content,
+        encoding: file.encoding
       });
 
       if (result.success) {
-        isDirty = false;
+        file.isDirty = false;
+        updateFilesList();
+        updateTitle();
+        updateStatus('File saved');
+      } else {
+        updateStatus('Error: ' + result.error);
+      }
+    }
+
+    async function saveFileById(id) {
+      const file = getFileById(id);
+      if (!file) return;
+
+      // If this is the active file, get latest content
+      if (id === activeFileId) {
+        file.content = editor.getValue();
+      }
+
+      if (!file.filePath) {
+        // Switch to file first for save dialog
+        switchToFile(id);
+        await saveFileAs();
+        return;
+      }
+
+      const result = await ipcRenderer.invoke('save-file', {
+        filePath: file.filePath,
+        content: file.content,
+        encoding: file.encoding
+      });
+
+      if (result.success) {
+        file.isDirty = false;
+        updateFilesList();
         updateTitle();
         updateStatus('File saved');
       } else {
@@ -216,28 +523,115 @@
     }
 
     async function saveFileAs() {
-      const content = editor.getValue();
-      const suggestedName = currentFilePath ? path.basename(currentFilePath) : 'untitled.txt';
+      const file = getActiveFile();
+      if (!file) return;
+
+      file.content = editor.getValue();
+      const suggestedName = file.filePath ? path.basename(file.filePath) : 'untitled.txt';
 
       const result = await ipcRenderer.invoke('save-file-dialog', {
-        content,
-        encoding: currentEncoding,
+        content: file.content,
+        encoding: file.encoding,
         suggestedName
       });
 
       if (result.success) {
-        currentFilePath = result.filePath;
-        isDirty = false;
+        file.filePath = result.filePath;
+        file.isDirty = false;
+        file.language = getLanguageFromPath(result.filePath);
+        const mode = getCodeMirrorMode(file.language);
+        editor.setOption('mode', mode);
+        updateFilesList();
         updateTitle();
+        updateLanguage(getLanguageDisplayName(file.language));
         updateStatus('File saved');
       } else if (!result.canceled) {
         updateStatus('Error: ' + result.error);
       }
     }
 
+    async function reloadFile() {
+      const file = getActiveFile();
+      if (!file || !file.filePath) {
+        updateStatus('Cannot reload: No file path');
+        return;
+      }
+
+      if (file.isDirty) {
+        const confirmed = confirm('Discard unsaved changes and reload from disk?');
+        if (!confirmed) return;
+      }
+
+      try {
+        const data = await ipcRenderer.invoke('reload-file', { filePath: file.filePath });
+        if (data) {
+          file.content = data.content;
+          file.encoding = data.encoding;
+          file.isDirty = false;
+          editor.setValue(file.content);
+          updateFilesList();
+          updateTitle();
+          updateEncoding(file.encoding.toUpperCase());
+          updateStatus('File reloaded');
+        }
+      } catch (err) {
+        updateStatus('Error reloading file');
+      }
+    }
+
+    function closeFile(id) {
+      const file = getFileById(id);
+      if (!file) return;
+
+      if (file.isDirty) {
+        pendingCloseAction = { type: 'close', fileId: id };
+        const fileName = file.filePath ? path.basename(file.filePath) : 'Untitled';
+        document.getElementById('save-modal-message').textContent =
+          `Do you want to save changes to "${fileName}" before closing?`;
+        showModal();
+      } else {
+        forceCloseFile(id);
+      }
+    }
+
+    function forceCloseFile(id) {
+      const index = openFiles.findIndex(f => f.id === id);
+      if (index === -1) return;
+
+      openFiles.splice(index, 1);
+
+      if (openFiles.length === 0) {
+        activeFileId = null;
+        editor.setValue('');
+        document.getElementById('editor-container').classList.add('hidden');
+        document.getElementById('no-file-message').classList.remove('hidden');
+        updateTitle();
+        updateStatus('Ready');
+      } else if (activeFileId === id) {
+        // Switch to another file
+        const newIndex = Math.min(index, openFiles.length - 1);
+        switchToFile(openFiles[newIndex].id);
+      }
+
+      updateFilesList();
+    }
+
+    function showModal() {
+      document.getElementById('save-modal').classList.remove('hidden');
+    }
+
+    function hideModal() {
+      document.getElementById('save-modal').classList.add('hidden');
+    }
+
     function updateTitle() {
-      const fileName = currentFilePath ? path.basename(currentFilePath) : 'Untitled';
-      document.title = (isDirty ? '* ' : '') + fileName + ' - Text Editor';
+      const file = getActiveFile();
+      if (file) {
+        const fileName = file.filePath ? path.basename(file.filePath) : 'Untitled';
+        document.title = (file.isDirty ? '* ' : '') + fileName + ' - Text Editor';
+      } else {
+        document.title = 'Text Editor';
+      }
     }
 
     function updateStatus(text) {
@@ -254,6 +648,40 @@
 
     function updateLanguage(language) {
       document.getElementById('status-language').textContent = language;
+    }
+
+    function updateFilesList() {
+      const container = document.getElementById('files-list');
+      container.innerHTML = '';
+
+      openFiles.forEach(file => {
+        const div = document.createElement('div');
+        div.className = 'file-item' +
+          (file.id === activeFileId ? ' active' : '') +
+          (file.isDirty ? ' modified' : '');
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'file-name';
+        nameSpan.textContent = file.filePath ? path.basename(file.filePath) : 'Untitled';
+        nameSpan.title = file.filePath || 'Untitled';
+
+        div.appendChild(nameSpan);
+
+        // Only show close button for non-modified files
+        if (!file.isDirty) {
+          const closeBtn = document.createElement('span');
+          closeBtn.className = 'file-close';
+          closeBtn.textContent = '×';
+          closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeFile(file.id);
+          });
+          div.appendChild(closeBtn);
+        }
+
+        div.addEventListener('click', () => switchToFile(file.id));
+        container.appendChild(div);
+      });
     }
 
     function getCodeMirrorMode(language) {
@@ -302,9 +730,42 @@
       return names[lang] || lang;
     }
 
-    // Initialize
+    function getLanguageFromPath(filePath) {
+      const ext = path.extname(filePath).toLowerCase();
+      const map = {
+        '.html': 'html',
+        '.htm': 'html',
+        '.xml': 'xml',
+        '.xaml': 'xml',
+        '.json': 'json',
+        '.js': 'javascript',
+        '.jsx': 'javascript',
+        '.mjs': 'javascript',
+        '.ts': 'typescript',
+        '.tsx': 'typescript',
+        '.cs': 'csharp',
+        '.css': 'css',
+        '.scss': 'scss',
+        '.less': 'less',
+        '.java': 'java',
+        '.sql': 'sql',
+        '.c': 'c',
+        '.h': 'c',
+        '.cpp': 'cpp',
+        '.hpp': 'cpp',
+        '.py': 'python',
+        '.md': 'markdown',
+        '.yaml': 'yaml',
+        '.yml': 'yaml',
+        '.txt': 'plaintext'
+      };
+      return map[ext] || 'plaintext';
+    }
+
+    // Initialize - show no file message
+    document.getElementById('editor-container').classList.add('hidden');
+    document.getElementById('no-file-message').classList.remove('hidden');
     updateTitle();
-    editor.focus();
   </script>
 </body>
 </html>
