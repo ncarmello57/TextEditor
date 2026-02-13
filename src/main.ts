@@ -22,6 +22,69 @@ function saveFormatMappings(mappings: { [key: string]: string }): void {
   fs.writeFileSync(formatMappingsPath, JSON.stringify(mappings, null, 2), 'utf-8');
 }
 
+const recentFilesPath = path.join(app.getPath('userData'), 'recent-files.json');
+const MAX_RECENT_FILES = 10;
+
+function loadRecentFiles(): string[] {
+  try {
+    if (fs.existsSync(recentFilesPath)) {
+      const data = JSON.parse(fs.readFileSync(recentFilesPath, 'utf-8'));
+      if (Array.isArray(data)) return data.slice(0, MAX_RECENT_FILES);
+    }
+  } catch {
+    // ignore corrupt config
+  }
+  return [];
+}
+
+function saveRecentFiles(files: string[]): void {
+  fs.writeFileSync(recentFilesPath, JSON.stringify(files, null, 2), 'utf-8');
+}
+
+function addRecentFile(filePath: string): void {
+  let recent = loadRecentFiles();
+  recent = recent.filter(f => f !== filePath);
+  recent.unshift(filePath);
+  if (recent.length > MAX_RECENT_FILES) recent = recent.slice(0, MAX_RECENT_FILES);
+  saveRecentFiles(recent);
+  createMenu();
+}
+
+async function openRecentFile(filePath: string): Promise<void> {
+  try {
+    const fileData = await readFileWithEncoding(filePath);
+    mainWindow?.webContents.send('file-opened', fileData);
+    addRecentFile(filePath);
+  } catch {
+    // File may have been deleted — remove from recent list
+    let recent = loadRecentFiles();
+    recent = recent.filter(f => f !== filePath);
+    saveRecentFiles(recent);
+    createMenu();
+  }
+}
+
+function buildRecentFilesSubmenu(): Electron.MenuItemConstructorOptions[] {
+  const recent = loadRecentFiles();
+  if (recent.length === 0) {
+    return [{ label: 'No Recent Files', enabled: false }];
+  }
+  const items: Electron.MenuItemConstructorOptions[] = recent.map(filePath => ({
+    label: path.basename(filePath),
+    sublabel: filePath,
+    click: () => openRecentFile(filePath)
+  }));
+  items.push({ type: 'separator' });
+  items.push({
+    label: 'Clear Recent Files',
+    click: () => {
+      saveRecentFiles([]);
+      createMenu();
+    }
+  });
+  return items;
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -65,6 +128,10 @@ function createMenu(): void {
           label: 'Open...',
           accelerator: 'CmdOrCtrl+O',
           click: () => openFile()
+        },
+        {
+          label: 'Recent Files',
+          submenu: buildRecentFilesSubmenu()
         },
         { type: 'separator' },
         {
@@ -134,6 +201,7 @@ async function openFile(): Promise<void> {
     const filePath = result.filePaths[0];
     const fileData = await readFileWithEncoding(filePath);
     mainWindow?.webContents.send('file-opened', fileData);
+    addRecentFile(filePath);
   }
 }
 
@@ -273,6 +341,10 @@ ipcMain.handle('reload-file', async (_, data: { filePath: string }) => {
   } catch (error) {
     return null;
   }
+});
+
+ipcMain.on('add-recent-file', (_, filePath: string) => {
+  addRecentFile(filePath);
 });
 
 ipcMain.on('confirm-close', () => {

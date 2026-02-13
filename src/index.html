@@ -1212,7 +1212,10 @@
       const filePath = webUtils.getPathForFile(file);
       if (!filePath) return;
       const data = await ipcRenderer.invoke('reload-file', { filePath });
-      if (data) loadFile(data);
+      if (data) {
+        loadFile(data);
+        ipcRenderer.send('add-recent-file', filePath);
+      }
     }, true);
 
     // Initialize - show no file message
