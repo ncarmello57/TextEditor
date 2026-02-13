@@ -37,6 +37,13 @@ function createWindow(): void {
 
   mainWindow.loadFile(path.join(__dirname, '../src/index.html'));
 
+  mainWindow.on('close', (e) => {
+    if (mainWindow) {
+      e.preventDefault();
+      mainWindow.webContents.send('app-closing');
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -265,6 +272,13 @@ ipcMain.handle('reload-file', async (_, data: { filePath: string }) => {
     return fileData;
   } catch (error) {
     return null;
+  }
+});
+
+ipcMain.on('confirm-close', () => {
+  if (mainWindow) {
+    mainWindow.removeAllListeners('close');
+    mainWindow.close();
   }
 });
 

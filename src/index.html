@@ -148,6 +148,14 @@
       font-size: 14px;
     }
 
+    .CodeMirror-selected {
+      background-color: #264f78 !important;
+    }
+
+    .CodeMirror-focused .CodeMirror-selected {
+      background-color: #264f78 !important;
+    }
+
     #statusbar {
       display: flex;
       justify-content: space-between;
@@ -375,6 +383,8 @@
     <div class="toolbar-separator"></div>
     <button id="btn-format">Format</button>
     <div class="toolbar-separator"></div>
+    <button id="btn-wrap">Word Wrap: Off</button>
+    <div class="toolbar-separator"></div>
     <button id="btn-theme">Light Theme</button>
   </div>
 
@@ -442,6 +452,18 @@
     </div>
   </div>
 
+  <!-- Close app confirmation modal -->
+  <div id="close-app-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Unsaved Changes</h3>
+      <p id="close-app-modal-message">You have unsaved files. Close without saving?</p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" id="close-app-cancel">Cancel</button>
+        <button class="btn-danger" id="close-app-confirm">Close Without Saving</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const { ipcRenderer, webUtils } = require('electron');
     const path = require('path');
@@ -457,6 +479,11 @@
     require('codemirror/mode/sql/sql');
     require('codemirror/mode/markdown/markdown');
     require('codemirror/mode/yaml/yaml');
+
+    // Load editor addons
+    require('codemirror/addon/edit/closebrackets');
+    require('codemirror/addon/edit/matchbrackets');
+    require('codemirror/addon/edit/closetag');
 
     // State - multiple files support
     let openFiles = []; // Array of { id, filePath, content, encoding, language, isDirty }
@@ -477,7 +504,8 @@
       indentWithTabs: true,
       lineWrapping: false,
       autoCloseBrackets: true,
-      matchBrackets: true
+      matchBrackets: true,
+      autoCloseTags: true
     });
 
     // Track changes
@@ -505,6 +533,7 @@
     document.getElementById('btn-reload').addEventListener('click', reloadFile);
     document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
     document.getElementById('btn-format').addEventListener('click', formatDocument);
+    document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 
     // Modal buttons
@@ -550,6 +579,15 @@
       applyFormat(formatType);
     });
 
+    // Close app modal buttons
+    document.getElementById('close-app-cancel').addEventListener('click', () => {
+      document.getElementById('close-app-modal').classList.add('hidden');
+    });
+    document.getElementById('close-app-confirm').addEventListener('click', () => {
+      document.getElementById('close-app-modal').classList.add('hidden');
+      ipcRenderer.send('confirm-close');
+    });
+
     // Load saved format mappings on startup
     ipcRenderer.invoke('load-format-mappings').then(mappings => {
       formatMappings = mappings || {};
@@ -560,6 +598,19 @@
     ipcRenderer.on('menu-save', () => saveFile());
     ipcRenderer.on('menu-save-as', () => saveFileAs());
     ipcRenderer.on('file-opened', (_, data) => loadFile(data));
+    ipcRenderer.on('app-closing', () => {
+      const hasUnsaved = openFiles.some(f => f.isDirty);
+      if (hasUnsaved) {
+        const unsavedCount = openFiles.filter(f => f.isDirty).length;
+        const msg = unsavedCount === 1
+          ? 'You have 1 unsaved file. Close without saving?'
+          : `You have ${unsavedCount} unsaved files. Close without saving?`;
+        document.getElementById('close-app-modal-message').textContent = msg;
+        document.getElementById('close-app-modal').classList.remove('hidden');
+      } else {
+        ipcRenderer.send('confirm-close');
+      }
+    });
 
     function generateFileId() {
       return ++fileIdCounter;
@@ -806,6 +857,12 @@
 
     function hideModal() {
       document.getElementById('save-modal').classList.add('hidden');
+    }
+
+    function toggleWordWrap() {
+      const current = editor.getOption('lineWrapping');
+      editor.setOption('lineWrapping', !current);
+      document.getElementById('btn-wrap').textContent = !current ? 'Word Wrap: On' : 'Word Wrap: Off';
     }
 
     function toggleTheme() {
