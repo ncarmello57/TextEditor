@@ -575,6 +575,9 @@
     <div class="toolbar-separator"></div>
     <button id="btn-reload" data-tooltip="Reload from disk">&#x21BB;</button>
     <div class="toolbar-separator"></div>
+    <button id="btn-undo" data-tooltip="Undo">&#x21B6;</button>
+    <button id="btn-redo" data-tooltip="Redo">&#x21B7;</button>
+    <div class="toolbar-separator"></div>
     <button id="btn-format" data-tooltip="Format document">&#x2261;</button>
     <div class="toolbar-separator"></div>
     <button id="btn-wrap" data-tooltip="Toggle word wrap">&#x21A9;</button>
@@ -720,6 +723,7 @@
       tabSize: 4,
       indentWithTabs: true,
       lineWrapping: false,
+      undoDepth: 10,
       autoCloseBrackets: true,
       matchBrackets: true,
       autoCloseTags: true
@@ -749,6 +753,8 @@
     document.getElementById('btn-save-as').addEventListener('click', saveFileAs);
     document.getElementById('btn-reload').addEventListener('click', reloadFile);
     document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
+    document.getElementById('btn-undo').addEventListener('click', () => editor.undo());
+    document.getElementById('btn-redo').addEventListener('click', () => editor.redo());
     document.getElementById('btn-format').addEventListener('click', formatDocument);
     document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
     document.getElementById('btn-search').addEventListener('click', toggleSearchPanel);
