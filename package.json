@@ -45,6 +45,7 @@
       "node_modules/codemirror/addon/edit/closebrackets.js",
       "node_modules/codemirror/addon/edit/matchbrackets.js",
       "node_modules/codemirror/addon/edit/closetag.js",
+      "node_modules/codemirror/addon/search/searchcursor.js",
       "node_modules/codemirror/package.json",
       "node_modules/iconv-lite/**/*"
     ],

@@ -35,17 +35,49 @@
     }
 
     #toolbar button {
-      padding: 6px 12px;
+      padding: 6px 10px;
       background-color: #3c3c3c;
       color: #d4d4d4;
       border: 1px solid #505050;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 16px;
+      line-height: 1;
+      min-width: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    #toolbar button.active {
+      background-color: #007acc;
+      border-color: #007acc;
     }
 
     #toolbar button:hover {
       background-color: #4c4c4c;
+    }
+
+    #toolbar button::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 6px;
+      padding: 4px 8px;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 100;
+    }
+
+    #toolbar button:hover::after {
+      opacity: 1;
     }
 
     #toolbar select {
@@ -308,6 +340,103 @@
       cursor: pointer;
     }
 
+    /* Search panel */
+    #search-panel {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background-color: #252526;
+      border-bottom: 1px solid #404040;
+    }
+
+    #search-panel input[type="text"] {
+      padding: 4px 8px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 180px;
+      outline: none;
+    }
+
+    #search-panel input[type="text"]:focus {
+      border-color: #007acc;
+    }
+
+    #search-panel button {
+      padding: 4px 8px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      position: relative;
+    }
+
+    #search-panel button:hover {
+      background-color: #4c4c4c;
+    }
+
+    #search-panel button::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 6px;
+      padding: 4px 8px;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 100;
+    }
+
+    #search-panel button:hover::after {
+      opacity: 1;
+    }
+
+    #search-panel label {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      color: #d4d4d4;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #search-panel input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    #search-count {
+      color: #888;
+      font-size: 12px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    #btn-search-close:hover {
+      background-color: #d32f2f !important;
+      color: white;
+    }
+
+    .search-highlight {
+      background-color: rgba(255, 215, 0, 0.3);
+    }
+
+    .search-highlight-current {
+      background-color: rgba(255, 165, 0, 0.6);
+    }
+
     .hidden {
       display: none !important;
     }
@@ -406,20 +535,51 @@
     body.light-theme .format-modal-field label {
       color: #333333;
     }
+
+    body.light-theme #search-panel {
+      background-color: #f0f0f0;
+      border-bottom-color: #cccccc;
+    }
+
+    body.light-theme #search-panel input[type="text"] {
+      background-color: #ffffff;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
+    body.light-theme #search-panel button {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
+    body.light-theme #search-panel button:hover {
+      background-color: #d0d0d0;
+    }
+
+    body.light-theme #search-panel label {
+      color: #333333;
+    }
+
+    body.light-theme #search-count {
+      color: #666666;
+    }
   </style>
 </head>
 <body>
   <div id="toolbar">
-    <button id="btn-new">New</button>
-    <button id="btn-open">Open</button>
-    <button id="btn-save">Save</button>
-    <button id="btn-save-as">Save As</button>
+    <button id="btn-new" data-tooltip="New file">&#x1F4C4;</button>
+    <button id="btn-open" data-tooltip="Open file">&#x1F4C2;</button>
+    <button id="btn-save" data-tooltip="Save">&#x1F4BE;</button>
+    <button id="btn-save-as" data-tooltip="Save As">&#x1F4E5;</button>
     <div class="toolbar-separator"></div>
-    <button id="btn-reload">Reload</button>
+    <button id="btn-reload" data-tooltip="Reload from disk">&#x21BB;</button>
     <div class="toolbar-separator"></div>
-    <button id="btn-format">Format</button>
+    <button id="btn-format" data-tooltip="Format document">&#x2261;</button>
     <div class="toolbar-separator"></div>
-    <button id="btn-wrap">Word Wrap: Off</button>
+    <button id="btn-wrap" data-tooltip="Toggle word wrap">&#x21A9;</button>
+    <div class="toolbar-separator"></div>
+    <button id="btn-search" data-tooltip="Find and Replace">&#x1F50D;</button>
     <div class="toolbar-separator"></div>
     <select id="theme-select">
       <option value="dark">Dark</option>
@@ -428,7 +588,20 @@
       <option value="dracula">Dracula</option>
       <option value="solarized-light">Solarized Light</option>
     </select>
-    <button id="btn-close" title="Close file">✕</button>
+    <button id="btn-close" data-tooltip="Close file">&#x2715;</button>
+  </div>
+
+  <div id="search-panel" class="hidden">
+    <input type="text" id="search-input" placeholder="Find">
+    <input type="text" id="replace-input" placeholder="Replace">
+    <button id="btn-search-prev" data-tooltip="Previous match">&#x25B2;</button>
+    <button id="btn-search-next" data-tooltip="Next match">&#x25BC;</button>
+    <button id="btn-replace" data-tooltip="Replace">Replace</button>
+    <button id="btn-replace-all" data-tooltip="Replace all">All</button>
+    <label data-tooltip="Case sensitive"><input type="checkbox" id="search-case"> Aa</label>
+    <label data-tooltip="Regular expression"><input type="checkbox" id="search-regex"> .*</label>
+    <span id="search-count">No results</span>
+    <button id="btn-search-close" data-tooltip="Close search">&#x2715;</button>
   </div>
 
   <div id="main-container">
@@ -527,6 +700,7 @@
     require('codemirror/addon/edit/closebrackets');
     require('codemirror/addon/edit/matchbrackets');
     require('codemirror/addon/edit/closetag');
+    require('codemirror/addon/search/searchcursor');
 
     // State - multiple files support
     let openFiles = []; // Array of { id, filePath, content, encoding, language, isDirty }
@@ -577,6 +751,30 @@
     document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
     document.getElementById('btn-format').addEventListener('click', formatDocument);
     document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
+    document.getElementById('btn-search').addEventListener('click', toggleSearchPanel);
+    document.getElementById('btn-search-prev').addEventListener('click', () => navigateMatch(-1));
+    document.getElementById('btn-search-next').addEventListener('click', () => navigateMatch(1));
+    document.getElementById('btn-replace').addEventListener('click', replaceCurrent);
+    document.getElementById('btn-replace-all').addEventListener('click', replaceAll);
+    document.getElementById('btn-search-close').addEventListener('click', closeSearchPanel);
+
+    document.getElementById('search-input').addEventListener('input', performSearch);
+    document.getElementById('search-case').addEventListener('change', performSearch);
+    document.getElementById('search-regex').addEventListener('change', performSearch);
+
+    document.getElementById('search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        navigateMatch(e.shiftKey ? -1 : 1);
+      } else if (e.key === 'Escape') {
+        closeSearchPanel();
+      }
+    });
+    document.getElementById('replace-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeSearchPanel();
+      }
+    });
 
     document.getElementById('theme-select').addEventListener('change', (e) => {
       applyTheme(e.target.value);
@@ -916,7 +1114,9 @@
     function toggleWordWrap() {
       const current = editor.getOption('lineWrapping');
       editor.setOption('lineWrapping', !current);
-      document.getElementById('btn-wrap').textContent = !current ? 'Word Wrap: On' : 'Word Wrap: Off';
+      const btn = document.getElementById('btn-wrap');
+      btn.classList.toggle('active', !current);
+      btn.setAttribute('data-tooltip', !current ? 'Word wrap on' : 'Toggle word wrap');
     }
 
     const themeMap = {
@@ -1259,6 +1459,170 @@
       };
       return map[ext] || 'plaintext';
     }
+
+    // Search and replace state
+    let searchMarks = [];
+    let searchMatches = [];
+    let currentMatchIndex = -1;
+
+    function toggleSearchPanel() {
+      const panel = document.getElementById('search-panel');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        const selection = editor.getSelection();
+        if (selection) {
+          document.getElementById('search-input').value = selection;
+        }
+        document.getElementById('search-input').focus();
+        document.getElementById('search-input').select();
+        if (document.getElementById('search-input').value) {
+          performSearch();
+        }
+      } else {
+        closeSearchPanel();
+      }
+    }
+
+    function closeSearchPanel() {
+      document.getElementById('search-panel').classList.add('hidden');
+      clearSearchHighlights();
+      editor.focus();
+    }
+
+    function clearSearchHighlights() {
+      searchMarks.forEach(m => m.clear());
+      searchMarks = [];
+      searchMatches = [];
+      currentMatchIndex = -1;
+      document.getElementById('search-count').textContent = 'No results';
+    }
+
+    function performSearch() {
+      clearSearchHighlights();
+      const query = document.getElementById('search-input').value;
+      if (!query) return;
+
+      const caseSensitive = document.getElementById('search-case').checked;
+      const useRegex = document.getElementById('search-regex').checked;
+
+      let searchQuery;
+      if (useRegex) {
+        try {
+          searchQuery = new RegExp(query, caseSensitive ? 'g' : 'gi');
+        } catch (e) {
+          document.getElementById('search-count').textContent = 'Invalid regex';
+          return;
+        }
+      } else {
+        searchQuery = query;
+      }
+
+      const cursor = editor.getSearchCursor(searchQuery, null, !caseSensitive);
+      while (cursor.findNext()) {
+        const from = cursor.from();
+        const to = cursor.to();
+        searchMatches.push({ from, to });
+        const mark = editor.markText(from, to, { className: 'search-highlight' });
+        searchMarks.push(mark);
+      }
+
+      if (searchMatches.length > 0) {
+        // Find the match closest to the current cursor position
+        const cursorPos = editor.getCursor();
+        let bestIndex = 0;
+        for (let i = 0; i < searchMatches.length; i++) {
+          const match = searchMatches[i];
+          if (match.from.line > cursorPos.line ||
+              (match.from.line === cursorPos.line && match.from.ch >= cursorPos.ch)) {
+            bestIndex = i;
+            break;
+          }
+          bestIndex = i;
+        }
+        highlightCurrentMatch(bestIndex);
+      } else {
+        document.getElementById('search-count').textContent = 'No results';
+      }
+    }
+
+    function highlightCurrentMatch(index) {
+      // Remove previous current highlight
+      if (currentMatchIndex >= 0 && currentMatchIndex < searchMarks.length) {
+        searchMarks[currentMatchIndex].clear();
+        const prev = searchMatches[currentMatchIndex];
+        searchMarks[currentMatchIndex] = editor.markText(prev.from, prev.to, { className: 'search-highlight' });
+      }
+
+      currentMatchIndex = index;
+      const match = searchMatches[currentMatchIndex];
+
+      // Apply current highlight
+      searchMarks[currentMatchIndex].clear();
+      searchMarks[currentMatchIndex] = editor.markText(match.from, match.to, { className: 'search-highlight-current' });
+
+      editor.scrollIntoView({ from: match.from, to: match.to }, 50);
+      editor.setCursor(match.from);
+
+      document.getElementById('search-count').textContent =
+        (currentMatchIndex + 1) + ' of ' + searchMatches.length;
+    }
+
+    function navigateMatch(direction) {
+      if (searchMatches.length === 0) {
+        performSearch();
+        return;
+      }
+
+      let newIndex = currentMatchIndex + direction;
+      if (newIndex >= searchMatches.length) newIndex = 0;
+      if (newIndex < 0) newIndex = searchMatches.length - 1;
+      highlightCurrentMatch(newIndex);
+    }
+
+    function replaceCurrent() {
+      if (currentMatchIndex < 0 || currentMatchIndex >= searchMatches.length) return;
+      const replaceText = document.getElementById('replace-input').value;
+      const match = searchMatches[currentMatchIndex];
+
+      editor.replaceRange(replaceText, match.from, match.to);
+      performSearch();
+    }
+
+    function replaceAll() {
+      if (searchMatches.length === 0) return;
+      const replaceText = document.getElementById('replace-input').value;
+      const count = searchMatches.length;
+
+      editor.operation(() => {
+        // Replace from bottom to top to preserve positions
+        for (let i = searchMatches.length - 1; i >= 0; i--) {
+          editor.replaceRange(replaceText, searchMatches[i].from, searchMatches[i].to);
+        }
+      });
+
+      clearSearchHighlights();
+      updateStatus('Replaced ' + count + ' occurrence' + (count !== 1 ? 's' : ''));
+    }
+
+    // Keyboard shortcuts for search
+    document.addEventListener('keydown', (e) => {
+      const mod = process.platform === 'darwin' ? e.metaKey : e.ctrlKey;
+      if (mod && e.key === 'f') {
+        e.preventDefault();
+        if (document.getElementById('search-panel').classList.contains('hidden')) {
+          toggleSearchPanel();
+        } else {
+          document.getElementById('search-input').focus();
+          document.getElementById('search-input').select();
+        }
+      } else if (mod && e.key === 'h') {
+        e.preventDefault();
+        if (document.getElementById('search-panel').classList.contains('hidden')) {
+          toggleSearchPanel();
+        }
+        document.getElementById('replace-input').focus();
+      }
+    });
 
     // Drag and drop file opening (capture phase to intercept before CodeMirror)
     document.addEventListener('dragover', (e) => {
