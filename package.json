@@ -27,7 +27,26 @@
     "files": [
       "dist/**/*",
       "src/index.html",
-      "node_modules/**/*"
+      "node_modules/codemirror/lib/**/*",
+      "node_modules/codemirror/mode/javascript/**/*",
+      "node_modules/codemirror/mode/xml/**/*",
+      "node_modules/codemirror/mode/htmlmixed/**/*",
+      "node_modules/codemirror/mode/css/**/*",
+      "node_modules/codemirror/mode/clike/**/*",
+      "node_modules/codemirror/mode/python/**/*",
+      "node_modules/codemirror/mode/sql/**/*",
+      "node_modules/codemirror/mode/markdown/**/*",
+      "node_modules/codemirror/mode/yaml/**/*",
+      "node_modules/codemirror/mode/meta.js",
+      "node_modules/codemirror/theme/material-darker.css",
+      "node_modules/codemirror/theme/monokai.css",
+      "node_modules/codemirror/theme/dracula.css",
+      "node_modules/codemirror/theme/solarized.css",
+      "node_modules/codemirror/addon/edit/closebrackets.js",
+      "node_modules/codemirror/addon/edit/matchbrackets.js",
+      "node_modules/codemirror/addon/edit/closetag.js",
+      "node_modules/codemirror/package.json",
+      "node_modules/iconv-lite/**/*"
     ],
     "win": {
       "target": [
@@ -43,7 +62,23 @@
       "target": [
         "dir"
       ]
-    }
+    },
+    "fileAssociations": [
+      { "ext": ["txt"], "name": "Text File", "role": "Editor" },
+      { "ext": ["html", "htm"], "name": "HTML File", "role": "Editor" },
+      { "ext": ["xml", "xaml"], "name": "XML File", "role": "Editor" },
+      { "ext": ["json"], "name": "JSON File", "role": "Editor" },
+      { "ext": ["js", "jsx", "mjs"], "name": "JavaScript File", "role": "Editor" },
+      { "ext": ["ts", "tsx"], "name": "TypeScript File", "role": "Editor" },
+      { "ext": ["cs"], "name": "C# File", "role": "Editor" },
+      { "ext": ["css", "scss", "less"], "name": "CSS File", "role": "Editor" },
+      { "ext": ["java"], "name": "Java File", "role": "Editor" },
+      { "ext": ["sql"], "name": "SQL File", "role": "Editor" },
+      { "ext": ["c", "cpp", "h", "hpp"], "name": "C/C++ File", "role": "Editor" },
+      { "ext": ["py"], "name": "Python File", "role": "Editor" },
+      { "ext": ["md"], "name": "Markdown File", "role": "Editor" },
+      { "ext": ["yaml", "yml"], "name": "YAML File", "role": "Editor" }
+    ]
   },
   "devDependencies": {
     "@types/node": "^25.2.0",

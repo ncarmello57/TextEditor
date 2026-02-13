@@ -4,6 +4,23 @@ import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
 
 let mainWindow: BrowserWindow | null = null;
+let pendingFilePath: string | null = null;
+
+// macOS: handle file open requests from Finder (can fire before window is ready)
+app.on('open-file', async (event, filePath) => {
+  event.preventDefault();
+  if (mainWindow) {
+    try {
+      const fileData = await readFileWithEncoding(filePath);
+      mainWindow.webContents.send('file-opened', fileData);
+      addRecentFile(filePath);
+    } catch {
+      // file could not be read
+    }
+  } else {
+    pendingFilePath = filePath;
+  }
+});
 
 const formatMappingsPath = path.join(app.getPath('userData'), 'format-mappings.json');
 
@@ -20,6 +37,23 @@ function loadFormatMappings(): { [key: string]: string } {
 
 function saveFormatMappings(mappings: { [key: string]: string }): void {
   fs.writeFileSync(formatMappingsPath, JSON.stringify(mappings, null, 2), 'utf-8');
+}
+
+const preferencesPath = path.join(app.getPath('userData'), 'preferences.json');
+
+function loadPreferences(): { [key: string]: any } {
+  try {
+    if (fs.existsSync(preferencesPath)) {
+      return JSON.parse(fs.readFileSync(preferencesPath, 'utf-8'));
+    }
+  } catch {
+    // ignore corrupt config
+  }
+  return {};
+}
+
+function savePreferences(prefs: { [key: string]: any }): void {
+  fs.writeFileSync(preferencesPath, JSON.stringify(prefs, null, 2), 'utf-8');
 }
 
 const recentFilesPath = path.join(app.getPath('userData'), 'recent-files.json');
@@ -367,7 +401,36 @@ ipcMain.handle('save-format-mappings', async (_, mappings: { [key: string]: stri
   }
 });
 
-app.whenReady().then(createWindow);
+ipcMain.handle('load-preferences', async () => {
+  return loadPreferences();
+});
+
+ipcMain.handle('save-preference', async (_, data: { key: string; value: any }) => {
+  const prefs = loadPreferences();
+  prefs[data.key] = data.value;
+  savePreferences(prefs);
+});
+
+app.whenReady().then(() => {
+  createWindow();
+
+  // Check for file path from command-line args (all platforms) or pending open-file event (macOS)
+  const fileArg = pendingFilePath || process.argv.find(arg =>
+    !arg.startsWith('-') && arg !== '.' && arg !== process.execPath && fs.existsSync(arg) && fs.statSync(arg).isFile()
+  );
+
+  if (fileArg && mainWindow) {
+    mainWindow.webContents.once('did-finish-load', async () => {
+      try {
+        const fileData = await readFileWithEncoding(fileArg);
+        mainWindow?.webContents.send('file-opened', fileData);
+        addRecentFile(fileArg);
+      } catch {
+        // file could not be read
+      }
+    });
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

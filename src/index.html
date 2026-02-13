@@ -6,6 +6,9 @@
   <title>Text Editor</title>
   <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css">
   <link rel="stylesheet" href="../node_modules/codemirror/theme/material-darker.css">
+  <link rel="stylesheet" href="../node_modules/codemirror/theme/monokai.css">
+  <link rel="stylesheet" href="../node_modules/codemirror/theme/dracula.css">
+  <link rel="stylesheet" href="../node_modules/codemirror/theme/solarized.css">
   <style>
     * {
       margin: 0;
@@ -43,6 +46,16 @@
 
     #toolbar button:hover {
       background-color: #4c4c4c;
+    }
+
+    #toolbar select {
+      padding: 6px 8px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
     }
 
     .toolbar-separator {
@@ -140,6 +153,24 @@
     #editor-container {
       flex: 1;
       overflow: hidden;
+      position: relative;
+    }
+
+    #btn-close {
+      margin-left: auto;
+      padding: 6px 10px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    #btn-close:hover {
+      background-color: #d32f2f;
+      color: white;
     }
 
     .CodeMirror {
@@ -298,6 +329,12 @@
       border-color: #cccccc;
     }
 
+    body.light-theme #toolbar select {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
     body.light-theme #toolbar button:hover {
       background-color: #d0d0d0;
     }
@@ -379,13 +416,19 @@
     <button id="btn-save-as">Save As</button>
     <div class="toolbar-separator"></div>
     <button id="btn-reload">Reload</button>
-    <button id="btn-close">Close</button>
     <div class="toolbar-separator"></div>
     <button id="btn-format">Format</button>
     <div class="toolbar-separator"></div>
     <button id="btn-wrap">Word Wrap: Off</button>
     <div class="toolbar-separator"></div>
-    <button id="btn-theme">Light Theme</button>
+    <select id="theme-select">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+      <option value="monokai">Monokai</option>
+      <option value="dracula">Dracula</option>
+      <option value="solarized-light">Solarized Light</option>
+    </select>
+    <button id="btn-close" title="Close file">✕</button>
   </div>
 
   <div id="main-container">
@@ -491,7 +534,7 @@
     let fileIdCounter = 0;
     let pendingCloseAction = null; // { type: 'close' | 'closeAll', fileId }
     let isLoadingContent = false; // Flag to suppress dirty marking during programmatic content changes
-    let isDarkTheme = true; // Theme state
+    let currentTheme = 'dark'; // Theme state
     let formatMappings = {}; // Extension-to-format mappings (e.g. { ".csproj": "xml" })
 
     // Initialize CodeMirror
@@ -534,7 +577,11 @@
     document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
     document.getElementById('btn-format').addEventListener('click', formatDocument);
     document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
-    document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+
+    document.getElementById('theme-select').addEventListener('change', (e) => {
+      applyTheme(e.target.value);
+      ipcRenderer.invoke('save-preference', { key: 'theme', value: e.target.value });
+    });
 
     // Modal buttons
     document.getElementById('modal-cancel').addEventListener('click', () => {
@@ -591,6 +638,13 @@
     // Load saved format mappings on startup
     ipcRenderer.invoke('load-format-mappings').then(mappings => {
       formatMappings = mappings || {};
+    });
+
+    // Load saved preferences on startup
+    ipcRenderer.invoke('load-preferences').then(prefs => {
+      if (prefs && prefs.theme) {
+        applyTheme(prefs.theme);
+      }
     });
 
     // IPC listeners
@@ -865,19 +919,26 @@
       document.getElementById('btn-wrap').textContent = !current ? 'Word Wrap: On' : 'Word Wrap: Off';
     }
 
-    function toggleTheme() {
-      isDarkTheme = !isDarkTheme;
-      const btn = document.getElementById('btn-theme');
+    const themeMap = {
+      'dark': { cm: 'material-darker', bodyClass: '' },
+      'light': { cm: 'default', bodyClass: 'light-theme' },
+      'monokai': { cm: 'monokai', bodyClass: '' },
+      'dracula': { cm: 'dracula', bodyClass: '' },
+      'solarized-light': { cm: 'solarized light', bodyClass: 'light-theme' }
+    };
 
-      if (isDarkTheme) {
-        document.body.classList.remove('light-theme');
-        editor.setOption('theme', 'material-darker');
-        btn.textContent = 'Light Theme';
-      } else {
-        document.body.classList.add('light-theme');
-        editor.setOption('theme', 'default');
-        btn.textContent = 'Dark Theme';
+    function applyTheme(themeName) {
+      const theme = themeMap[themeName];
+      if (!theme) return;
+      currentTheme = themeName;
+
+      // Remove all theme body classes, then apply if needed
+      document.body.classList.remove('light-theme');
+      if (theme.bodyClass) {
+        document.body.classList.add(theme.bodyClass);
       }
+      editor.setOption('theme', theme.cm);
+      document.getElementById('theme-select').value = themeName;
     }
 
     function getFormatType(file) {
@@ -1218,10 +1279,8 @@
       }
     }, true);
 
-    // Initialize - show no file message
-    document.getElementById('editor-container').classList.add('hidden');
-    document.getElementById('no-file-message').classList.remove('hidden');
-    updateTitle();
+    // Initialize - create a new empty file on startup
+    newFile();
   </script>
 </body>
 </html>
