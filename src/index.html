@@ -437,6 +437,140 @@
       background-color: rgba(255, 165, 0, 0.6);
     }
 
+    /* Merge view */
+    #merge-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #merge-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background-color: #252526;
+      border-bottom: 1px solid #404040;
+      font-size: 13px;
+    }
+
+    #merge-toolbar button {
+      padding: 4px 12px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    #merge-toolbar button:hover {
+      background-color: #4c4c4c;
+    }
+
+    #merge-toolbar button.merge-done {
+      background-color: #007acc;
+      border-color: #007acc;
+      color: white;
+    }
+
+    #merge-toolbar button.merge-done:hover {
+      background-color: #1e8ad6;
+    }
+
+    .merge-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background-color: #2d2d2d;
+      border-bottom: 1px solid #404040;
+      font-size: 12px;
+    }
+
+    .merge-panel-header .merge-filename {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #d4d4d4;
+    }
+
+    .merge-panel-header button {
+      padding: 3px 8px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #505050;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .merge-panel-header button:hover {
+      background-color: #4c4c4c;
+    }
+
+    .merge-panel-header .merge-save-btn {
+      background-color: #007acc;
+      border-color: #007acc;
+      color: white;
+    }
+
+    .merge-panel-header .merge-save-btn:hover {
+      background-color: #1e8ad6;
+    }
+
+    #merge-editors {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .merge-editor-wrap {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .merge-editor-wrap + .merge-editor-wrap {
+      border-left: 2px solid #007acc;
+    }
+
+    .merge-editor-wrap .CodeMirror {
+      height: 100%;
+    }
+
+    .merge-added {
+      background-color: rgba(46, 125, 50, 0.2);
+    }
+
+    .merge-removed {
+      background-color: rgba(211, 47, 47, 0.2);
+    }
+
+    .merge-accept-btn {
+      display: inline-block;
+      padding: 2px 8px;
+      margin: 2px 0;
+      background-color: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .merge-accept-btn:hover {
+      background-color: #388e3c;
+    }
+
+    .merge-editor-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -564,6 +698,52 @@
     body.light-theme #search-count {
       color: #666666;
     }
+
+    body.light-theme #merge-toolbar {
+      background-color: #f0f0f0;
+      border-bottom-color: #cccccc;
+    }
+
+    body.light-theme #merge-toolbar button {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
+    body.light-theme #merge-toolbar button:hover {
+      background-color: #d0d0d0;
+    }
+
+    body.light-theme .merge-panel-header {
+      background-color: #f0f0f0;
+      border-bottom-color: #cccccc;
+    }
+
+    body.light-theme .merge-panel-header .merge-filename {
+      color: #333333;
+    }
+
+    body.light-theme .merge-panel-header button {
+      background-color: #e0e0e0;
+      color: #333333;
+      border-color: #cccccc;
+    }
+
+    body.light-theme .merge-panel-header button:hover {
+      background-color: #d0d0d0;
+    }
+
+    body.light-theme .merge-editor-wrap + .merge-editor-wrap {
+      border-left-color: #007acc;
+    }
+
+    body.light-theme .merge-added {
+      background-color: rgba(46, 125, 50, 0.15);
+    }
+
+    body.light-theme .merge-removed {
+      background-color: rgba(211, 47, 47, 0.15);
+    }
   </style>
 </head>
 <body>
@@ -583,6 +763,8 @@
     <button id="btn-wrap" data-tooltip="Toggle word wrap">&#x21A9;</button>
     <div class="toolbar-separator"></div>
     <button id="btn-search" data-tooltip="Find and Replace">&#x1F50D;</button>
+    <div class="toolbar-separator"></div>
+    <button id="btn-merge" data-tooltip="Merge file">&#x2194;</button>
     <div class="toolbar-separator"></div>
     <select id="theme-select">
       <option value="dark">Dark</option>
@@ -615,6 +797,29 @@
 
     <div id="editor-container">
       <textarea id="editor"></textarea>
+    </div>
+
+    <div id="merge-container" class="hidden">
+      <div id="merge-toolbar">
+        <button id="merge-refresh-btn">Refresh Diff</button>
+        <button class="merge-done" id="merge-done-btn">Done</button>
+      </div>
+      <div id="merge-editors">
+        <div class="merge-editor-wrap" id="merge-left-wrap">
+          <div class="merge-panel-header">
+            <span class="merge-filename" id="merge-left-name"></span>
+            <button class="merge-save-btn" id="merge-left-save-btn">Save</button>
+          </div>
+          <textarea id="merge-left-editor"></textarea>
+        </div>
+        <div class="merge-editor-wrap" id="merge-right-wrap">
+          <div class="merge-panel-header">
+            <span class="merge-filename" id="merge-right-name"></span>
+            <button class="merge-save-btn" id="merge-right-save-btn">Save</button>
+          </div>
+          <textarea id="merge-right-editor"></textarea>
+        </div>
+      </div>
     </div>
 
     <div id="no-file-message" class="hidden">
@@ -752,12 +957,23 @@
     document.getElementById('btn-save').addEventListener('click', saveFile);
     document.getElementById('btn-save-as').addEventListener('click', saveFileAs);
     document.getElementById('btn-reload').addEventListener('click', reloadFile);
-    document.getElementById('btn-close').addEventListener('click', () => closeFile(activeFileId));
+    document.getElementById('btn-close').addEventListener('click', () => {
+      if (mergeActive) {
+        cancelMerge();
+      } else {
+        closeFile(activeFileId);
+      }
+    });
     document.getElementById('btn-undo').addEventListener('click', () => editor.undo());
     document.getElementById('btn-redo').addEventListener('click', () => editor.redo());
     document.getElementById('btn-format').addEventListener('click', formatDocument);
     document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
     document.getElementById('btn-search').addEventListener('click', toggleSearchPanel);
+    document.getElementById('btn-merge').addEventListener('click', startMerge);
+    document.getElementById('merge-refresh-btn').addEventListener('click', () => computeAndDisplayDiff());
+    document.getElementById('merge-done-btn').addEventListener('click', closeMergeView);
+    document.getElementById('merge-left-save-btn').addEventListener('click', () => saveMergeFile('left'));
+    document.getElementById('merge-right-save-btn').addEventListener('click', () => saveMergeFile('right'));
     document.getElementById('btn-search-prev').addEventListener('click', () => navigateMatch(-1));
     document.getElementById('btn-search-next').addEventListener('click', () => navigateMatch(1));
     document.getElementById('btn-replace').addEventListener('click', replaceCurrent);
@@ -1629,6 +1845,341 @@
         document.getElementById('replace-input').focus();
       }
     });
+
+    // Merge view
+    const mergeLeftEditor = CodeMirror.fromTextArea(document.getElementById('merge-left-editor'), {
+      lineNumbers: true,
+      theme: 'material-darker',
+      mode: 'text/plain',
+      readOnly: false
+    });
+
+    const mergeRightEditor = CodeMirror.fromTextArea(document.getElementById('merge-right-editor'), {
+      lineNumbers: true,
+      theme: 'material-darker',
+      mode: 'text/plain',
+      readOnly: false
+    });
+
+    let mergeActive = false;
+    let mergeHunks = [];
+    let mergeMarks = [];
+    let mergeWidgets = [];
+    let mergeLeftFilePath = null;
+    let mergeRightFilePath = null;
+    let mergeLeftEncoding = 'utf-8';
+    let mergeRightEncoding = 'utf-8';
+    let mergeOriginalLeftContent = '';
+    let mergeOriginalRightContent = '';
+
+    // Scroll sync between merge editors
+    let mergeSyncScroll = true;
+    mergeLeftEditor.on('scroll', () => {
+      if (!mergeSyncScroll) return;
+      mergeSyncScroll = false;
+      const scrollInfo = mergeLeftEditor.getScrollInfo();
+      mergeRightEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+      mergeSyncScroll = true;
+    });
+    mergeRightEditor.on('scroll', () => {
+      if (!mergeSyncScroll) return;
+      mergeSyncScroll = false;
+      const scrollInfo = mergeRightEditor.getScrollInfo();
+      mergeLeftEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+      mergeSyncScroll = true;
+    });
+
+    // LCS-based line diff algorithm
+    function computeDiff(leftLines, rightLines) {
+      const m = leftLines.length;
+      const n = rightLines.length;
+
+      // Build LCS table
+      const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (leftLines[i - 1] === rightLines[j - 1]) {
+            dp[i][j] = dp[i - 1][j - 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+      }
+
+      // Backtrack to find diff hunks
+      const result = [];
+      let i = m, j = n;
+      const ops = [];
+
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && leftLines[i - 1] === rightLines[j - 1]) {
+          ops.push({ type: 'equal', leftIdx: i - 1, rightIdx: j - 1 });
+          i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+          ops.push({ type: 'added', rightIdx: j - 1 });
+          j--;
+        } else {
+          ops.push({ type: 'removed', leftIdx: i - 1 });
+          i--;
+        }
+      }
+
+      ops.reverse();
+
+      // Group consecutive non-equal ops into hunks
+      const hunks = [];
+      let currentHunk = null;
+
+      ops.forEach(op => {
+        if (op.type === 'equal') {
+          if (currentHunk) {
+            hunks.push(currentHunk);
+            currentHunk = null;
+          }
+        } else {
+          if (!currentHunk) {
+            currentHunk = {
+              leftStart: op.type === 'removed' ? op.leftIdx : -1,
+              leftLines: [],
+              rightStart: op.type === 'added' ? op.rightIdx : -1,
+              rightLines: []
+            };
+          }
+          if (op.type === 'removed') {
+            if (currentHunk.leftStart === -1) currentHunk.leftStart = op.leftIdx;
+            currentHunk.leftLines.push(leftLines[op.leftIdx]);
+          } else {
+            if (currentHunk.rightStart === -1) currentHunk.rightStart = op.rightIdx;
+            currentHunk.rightLines.push(rightLines[op.rightIdx]);
+          }
+        }
+      });
+
+      if (currentHunk) hunks.push(currentHunk);
+      return hunks;
+    }
+
+    async function startMerge() {
+      const file = getActiveFile();
+      if (!file) {
+        updateStatus('No file open to merge');
+        return;
+      }
+
+      // Save current editor content
+      file.content = editor.getValue();
+
+      // Open file dialog for the incoming file
+      const data = await ipcRenderer.invoke('reload-file-dialog');
+      if (!data) return;
+
+      // Store file paths and encodings for independent saving
+      mergeLeftFilePath = file.filePath;
+      mergeRightFilePath = data.filePath;
+      mergeLeftEncoding = file.encoding || 'utf-8';
+      mergeRightEncoding = data.encoding || 'utf-8';
+
+      // Enter merge mode
+      mergeActive = true;
+      document.getElementById('editor-container').classList.add('hidden');
+      document.getElementById('merge-container').classList.remove('hidden');
+      document.getElementById('files-panel').classList.add('hidden');
+
+      // Set filenames in headers
+      const leftName = file.filePath ? path.basename(file.filePath) : 'Untitled';
+      const rightName = data.filePath ? path.basename(data.filePath) : 'Unknown';
+      document.getElementById('merge-left-name').textContent = leftName;
+      document.getElementById('merge-right-name').textContent = rightName;
+
+      // Apply current theme to merge editors
+      const theme = themeMap[currentTheme];
+      if (theme) {
+        mergeLeftEditor.setOption('theme', theme.cm);
+        mergeRightEditor.setOption('theme', theme.cm);
+      }
+
+      // Set modes
+      const leftMode = getCodeMirrorMode(file.language);
+      const rightMode = getCodeMirrorMode(data.language || 'plaintext');
+      mergeLeftEditor.setOption('mode', leftMode);
+      mergeRightEditor.setOption('mode', rightMode);
+
+      // Load content and store originals for cancel detection
+      mergeLeftEditor.setValue(file.content);
+      mergeRightEditor.setValue(data.content);
+      mergeOriginalLeftContent = file.content;
+      mergeOriginalRightContent = data.content;
+
+      mergeLeftEditor.refresh();
+      mergeRightEditor.refresh();
+
+      // Compute and display diff
+      computeAndDisplayDiff();
+
+      updateStatus('Merge mode: ' + leftName + ' vs ' + rightName);
+    }
+
+    function computeAndDisplayDiff() {
+      // Clear previous marks and widgets
+      clearMergeMarks();
+
+      const leftLines = mergeLeftEditor.getValue().split('\n');
+      const rightLines = mergeRightEditor.getValue().split('\n');
+
+      mergeHunks = computeDiff(leftLines, rightLines);
+
+      mergeHunks.forEach((hunk, hunkIndex) => {
+        // Mark removed lines in left editor (red)
+        if (hunk.leftLines.length > 0 && hunk.leftStart >= 0) {
+          for (let i = 0; i < hunk.leftLines.length; i++) {
+            const line = hunk.leftStart + i;
+            if (line < mergeLeftEditor.lineCount()) {
+              mergeLeftEditor.addLineClass(line, 'background', 'merge-removed');
+              mergeMarks.push({ editor: 'left', line, type: 'class' });
+            }
+          }
+        }
+
+        // Mark added lines in right editor (green)
+        if (hunk.rightLines.length > 0 && hunk.rightStart >= 0) {
+          for (let i = 0; i < hunk.rightLines.length; i++) {
+            const line = hunk.rightStart + i;
+            if (line < mergeRightEditor.lineCount()) {
+              mergeRightEditor.addLineClass(line, 'background', 'merge-added');
+              mergeMarks.push({ editor: 'right', line, type: 'class' });
+            }
+          }
+        }
+
+        // Add "Accept →" button on left editor (push left content to right)
+        const leftInsertLine = hunk.leftStart >= 0 ? hunk.leftStart : 0;
+        if (leftInsertLine < mergeLeftEditor.lineCount() && hunk.leftLines.length > 0) {
+          const btnToRight = document.createElement('button');
+          btnToRight.className = 'merge-accept-btn';
+          btnToRight.textContent = 'Push to right \u2192';
+          btnToRight.addEventListener('click', () => acceptHunkTo(hunkIndex, 'right'));
+          const widget = mergeLeftEditor.addLineWidget(leftInsertLine, btnToRight, { above: true });
+          mergeWidgets.push(widget);
+        }
+
+        // Add "← Accept" button on right editor (push right content to left)
+        const rightInsertLine = hunk.rightStart >= 0 ? hunk.rightStart : 0;
+        if (rightInsertLine < mergeRightEditor.lineCount() && hunk.rightLines.length > 0) {
+          const btnToLeft = document.createElement('button');
+          btnToLeft.className = 'merge-accept-btn';
+          btnToLeft.textContent = '\u2190 Push to left';
+          btnToLeft.addEventListener('click', () => acceptHunkTo(hunkIndex, 'left'));
+          const widget = mergeRightEditor.addLineWidget(rightInsertLine, btnToLeft, { above: true });
+          mergeWidgets.push(widget);
+        }
+      });
+    }
+
+    function clearMergeMarks() {
+      mergeMarks.forEach(m => {
+        if (m.type === 'class') {
+          const ed = m.editor === 'left' ? mergeLeftEditor : mergeRightEditor;
+          ed.removeLineClass(m.line, 'background');
+        }
+      });
+      mergeMarks = [];
+      mergeWidgets.forEach(w => w.clear());
+      mergeWidgets = [];
+      mergeHunks = [];
+    }
+
+    function acceptHunkTo(hunkIndex, direction) {
+      const hunk = mergeHunks[hunkIndex];
+      if (!hunk) return;
+
+      if (direction === 'left') {
+        // Copy right content into left editor (insert, don't overwrite)
+        const insertAt = hunk.leftStart >= 0 ? hunk.leftStart : 0;
+        const pos = { line: insertAt, ch: 0 };
+        const text = hunk.rightLines.join('\n') + '\n';
+        mergeLeftEditor.replaceRange(text, pos, pos);
+      } else {
+        // Copy left content into right editor (insert, don't overwrite)
+        const insertAt = hunk.rightStart >= 0 ? hunk.rightStart : 0;
+        const pos = { line: insertAt, ch: 0 };
+        const text = hunk.leftLines.join('\n') + '\n';
+        mergeRightEditor.replaceRange(text, pos, pos);
+      }
+
+      // Recompute diff
+      computeAndDisplayDiff();
+    }
+
+    async function saveMergeFile(side) {
+      const filePath = side === 'left' ? mergeLeftFilePath : mergeRightFilePath;
+      const encoding = side === 'left' ? mergeLeftEncoding : mergeRightEncoding;
+      const ed = side === 'left' ? mergeLeftEditor : mergeRightEditor;
+      const content = ed.getValue();
+
+      if (!filePath) {
+        updateStatus('Cannot save: no file path for ' + side + ' panel');
+        return;
+      }
+
+      const result = await ipcRenderer.invoke('save-file', { filePath, content, encoding });
+      if (result.success) {
+        updateStatus('Saved: ' + path.basename(filePath));
+      } else {
+        updateStatus('Error saving: ' + result.error);
+      }
+    }
+
+    function cancelMerge() {
+      if (!mergeActive) return;
+
+      const hasChanges =
+        mergeLeftEditor.getValue() !== mergeOriginalLeftContent ||
+        mergeRightEditor.getValue() !== mergeOriginalRightContent;
+
+      if (hasChanges) {
+        if (!confirm('You have unsaved merge changes. Discard and close?')) {
+          return;
+        }
+      }
+
+      exitMergeMode();
+      updateStatus('Merge cancelled');
+    }
+
+    function closeMergeView() {
+      const file = getActiveFile();
+      if (file) {
+        const mergedContent = mergeLeftEditor.getValue();
+        if (mergedContent !== file.content) {
+          file.content = mergedContent;
+          file.isDirty = true;
+          isLoadingContent = true;
+          editor.setValue(file.content);
+          isLoadingContent = false;
+          updateFilesList();
+          updateTitle();
+        }
+      }
+
+      exitMergeMode();
+      updateStatus('Merge complete');
+    }
+
+    function exitMergeMode() {
+      clearMergeMarks();
+      mergeActive = false;
+      mergeLeftFilePath = null;
+      mergeRightFilePath = null;
+      mergeLeftEncoding = 'utf-8';
+      mergeRightEncoding = 'utf-8';
+      mergeOriginalLeftContent = '';
+      mergeOriginalRightContent = '';
+      document.getElementById('merge-container').classList.add('hidden');
+      document.getElementById('editor-container').classList.remove('hidden');
+      document.getElementById('files-panel').classList.remove('hidden');
+      editor.refresh();
+      editor.focus();
+    }
 
     // Drag and drop file opening (capture phase to intercept before CodeMirror)
     document.addEventListener('dragover', (e) => {

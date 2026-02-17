@@ -411,6 +411,33 @@ ipcMain.handle('save-preference', async (_, data: { key: string; value: any }) =
   savePreferences(prefs);
 });
 
+ipcMain.handle('reload-file-dialog', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'All Files', extensions: ['*'] },
+      { name: 'Text Files', extensions: ['txt'] },
+      { name: 'HTML Files', extensions: ['html', 'htm'] },
+      { name: 'XML Files', extensions: ['xml', 'xaml'] },
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'JavaScript Files', extensions: ['js', 'jsx', 'mjs'] },
+      { name: 'TypeScript Files', extensions: ['ts', 'tsx'] },
+      { name: 'C# Files', extensions: ['cs'] },
+      { name: 'CSS Files', extensions: ['css', 'scss', 'less'] },
+      { name: 'Python Files', extensions: ['py'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    try {
+      return await readFileWithEncoding(result.filePaths[0]);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+});
+
 app.whenReady().then(() => {
   createWindow();
 
