@@ -129,7 +129,7 @@ function createWindow(): void {
       nodeIntegration: true,
       contextIsolation: false
     },
-    title: 'Text Editor'
+    title: 'EGIEdit'
   });
 
   mainWindow.loadFile(path.join(__dirname, '../src/index.html'));

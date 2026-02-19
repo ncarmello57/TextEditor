@@ -1,15 +1,15 @@
 {
-  "name": "texteditor",
+  "name": "egiedit",
   "version": "1.0.0",
-  "description": "Advanced Text Editor with syntax highlighting",
+  "description": "EGIEdit - Advanced Text Editor with syntax highlighting",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "start": "npm run build && electron .",
     "dev": "tsc && electron .",
-    "dist:win": "npm run build && electron-builder --win --dir",
-    "dist:mac": "npm run build && electron-builder --mac --dir",
-    "pack:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:all": "npm run build && electron-builder --win --mac"
   },
   "keywords": [
     "text-editor",
@@ -19,8 +19,10 @@
   "author": "",
   "license": "MIT",
   "build": {
-    "appId": "com.texteditor.app",
-    "productName": "Text Editor",
+    "appId": "com.egiedit.app",
+    "productName": "EGIEdit",
+    "copyright": "Copyright © 2025 EGIEdit",
+    "icon": "build/icon",
     "directories": {
       "output": "release"
     },
@@ -50,18 +52,36 @@
       "node_modules/iconv-lite/**/*"
     ],
     "win": {
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
       "target": [
         {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "target": "zip",
+          "arch": ["x64"]
         }
       ]
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
     "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.developer-tools",
       "target": [
-        "dir"
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "EGIEdit",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
       ]
     },
     "fileAssociations": [

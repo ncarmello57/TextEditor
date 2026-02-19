@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Text Editor</title>
+  <title>EGIEdit</title>
   <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css">
   <link rel="stylesheet" href="../node_modules/codemirror/theme/material-darker.css">
   <link rel="stylesheet" href="../node_modules/codemirror/theme/monokai.css">
@@ -1551,9 +1551,9 @@
       const file = getActiveFile();
       if (file) {
         const fileName = file.filePath ? path.basename(file.filePath) : 'Untitled';
-        document.title = (file.isDirty ? '* ' : '') + fileName + ' - Text Editor';
+        document.title = (file.isDirty ? '* ' : '') + fileName + ' - EGIEdit';
       } else {
-        document.title = 'Text Editor';
+        document.title = 'EGIEdit';
       }
     }
 
