@@ -488,6 +488,8 @@
       background-color: #2d2d2d;
       border-bottom: 1px solid #404040;
       font-size: 12px;
+      flex-shrink: 0;
+      z-index: 1;
     }
 
     .merge-panel-header .merge-filename {
@@ -539,7 +541,8 @@
     }
 
     .merge-editor-wrap .CodeMirror {
-      height: 100%;
+      flex: 1;
+      min-height: 0;
     }
 
     .merge-added {
@@ -1684,16 +1687,19 @@
 
     // Search and replace state
     let searchMarks = [];
-    let searchMatches = [];
+    let searchMatches = []; // Each entry: { from, to, editor } where editor is the CodeMirror instance
     let currentMatchIndex = -1;
 
     function toggleSearchPanel() {
       const panel = document.getElementById('search-panel');
       if (panel.classList.contains('hidden')) {
         panel.classList.remove('hidden');
-        const selection = editor.getSelection();
-        if (selection) {
-          document.getElementById('search-input').value = selection;
+        updateSearchReplaceVisibility();
+        if (!mergeActive) {
+          const selection = editor.getSelection();
+          if (selection) {
+            document.getElementById('search-input').value = selection;
+          }
         }
         document.getElementById('search-input').focus();
         document.getElementById('search-input').select();
@@ -1705,10 +1711,18 @@
       }
     }
 
+    function updateSearchReplaceVisibility() {
+      // Replace is always available, including in merge mode
+    }
+
     function closeSearchPanel() {
       document.getElementById('search-panel').classList.add('hidden');
       clearSearchHighlights();
-      editor.focus();
+      if (mergeActive) {
+        mergeLeftEditor.focus();
+      } else {
+        editor.focus();
+      }
     }
 
     function clearSearchHighlights() {
@@ -1719,49 +1733,56 @@
       document.getElementById('search-count').textContent = 'No results';
     }
 
-    function performSearch() {
-      clearSearchHighlights();
+    function buildSearchQuery() {
       const query = document.getElementById('search-input').value;
-      if (!query) return;
+      if (!query) return null;
 
       const caseSensitive = document.getElementById('search-case').checked;
       const useRegex = document.getElementById('search-regex').checked;
 
-      let searchQuery;
       if (useRegex) {
         try {
-          searchQuery = new RegExp(query, caseSensitive ? 'g' : 'gi');
+          return { query: new RegExp(query, caseSensitive ? 'g' : 'gi'), caseSensitive };
         } catch (e) {
           document.getElementById('search-count').textContent = 'Invalid regex';
-          return;
+          return null;
         }
-      } else {
-        searchQuery = query;
       }
+      return { query, caseSensitive };
+    }
 
-      const cursor = editor.getSearchCursor(searchQuery, null, !caseSensitive);
+    function searchInEditor(ed, searchQuery, caseSensitive) {
+      const matches = [];
+      const marks = [];
+      const cursor = ed.getSearchCursor(searchQuery, null, !caseSensitive);
       while (cursor.findNext()) {
         const from = cursor.from();
         const to = cursor.to();
-        searchMatches.push({ from, to });
-        const mark = editor.markText(from, to, { className: 'search-highlight' });
-        searchMarks.push(mark);
+        matches.push({ from, to, editor: ed });
+        marks.push(ed.markText(from, to, { className: 'search-highlight' }));
+      }
+      return { matches, marks };
+    }
+
+    function performSearch() {
+      clearSearchHighlights();
+      const sq = buildSearchQuery();
+      if (!sq) return;
+
+      if (mergeActive) {
+        // Search left editor first, then right editor
+        const left = searchInEditor(mergeLeftEditor, sq.query, sq.caseSensitive);
+        const right = searchInEditor(mergeRightEditor, sq.query, sq.caseSensitive);
+        searchMatches = [...left.matches, ...right.matches];
+        searchMarks = [...left.marks, ...right.marks];
+      } else {
+        const result = searchInEditor(editor, sq.query, sq.caseSensitive);
+        searchMatches = result.matches;
+        searchMarks = result.marks;
       }
 
       if (searchMatches.length > 0) {
-        // Find the match closest to the current cursor position
-        const cursorPos = editor.getCursor();
-        let bestIndex = 0;
-        for (let i = 0; i < searchMatches.length; i++) {
-          const match = searchMatches[i];
-          if (match.from.line > cursorPos.line ||
-              (match.from.line === cursorPos.line && match.from.ch >= cursorPos.ch)) {
-            bestIndex = i;
-            break;
-          }
-          bestIndex = i;
-        }
-        highlightCurrentMatch(bestIndex);
+        highlightCurrentMatch(0);
       } else {
         document.getElementById('search-count').textContent = 'No results';
       }
@@ -1772,7 +1793,7 @@
       if (currentMatchIndex >= 0 && currentMatchIndex < searchMarks.length) {
         searchMarks[currentMatchIndex].clear();
         const prev = searchMatches[currentMatchIndex];
-        searchMarks[currentMatchIndex] = editor.markText(prev.from, prev.to, { className: 'search-highlight' });
+        searchMarks[currentMatchIndex] = prev.editor.markText(prev.from, prev.to, { className: 'search-highlight' });
       }
 
       currentMatchIndex = index;
@@ -1780,10 +1801,16 @@
 
       // Apply current highlight
       searchMarks[currentMatchIndex].clear();
-      searchMarks[currentMatchIndex] = editor.markText(match.from, match.to, { className: 'search-highlight-current' });
+      searchMarks[currentMatchIndex] = match.editor.markText(match.from, match.to, { className: 'search-highlight-current' });
 
-      editor.scrollIntoView({ from: match.from, to: match.to }, 50);
-      editor.setCursor(match.from);
+      match.editor.scrollIntoView({ from: match.from, to: match.to }, 50);
+      match.editor.setCursor(match.from);
+
+      // Only focus the editor if the search input doesn't have focus
+      const searchInput = document.getElementById('search-input');
+      if (document.activeElement !== searchInput) {
+        match.editor.focus();
+      }
 
       document.getElementById('search-count').textContent =
         (currentMatchIndex + 1) + ' of ' + searchMatches.length;
@@ -1806,7 +1833,7 @@
       const replaceText = document.getElementById('replace-input').value;
       const match = searchMatches[currentMatchIndex];
 
-      editor.replaceRange(replaceText, match.from, match.to);
+      match.editor.replaceRange(replaceText, match.from, match.to);
       performSearch();
     }
 
@@ -1815,12 +1842,23 @@
       const replaceText = document.getElementById('replace-input').value;
       const count = searchMatches.length;
 
-      editor.operation(() => {
-        // Replace from bottom to top to preserve positions
-        for (let i = searchMatches.length - 1; i >= 0; i--) {
-          editor.replaceRange(replaceText, searchMatches[i].from, searchMatches[i].to);
-        }
-      });
+      // Replace from bottom to top to preserve positions, grouped by editor
+      if (mergeActive) {
+        const leftMatches = searchMatches.filter(m => m.editor === mergeLeftEditor).reverse();
+        const rightMatches = searchMatches.filter(m => m.editor === mergeRightEditor).reverse();
+        mergeLeftEditor.operation(() => {
+          leftMatches.forEach(m => mergeLeftEditor.replaceRange(replaceText, m.from, m.to));
+        });
+        mergeRightEditor.operation(() => {
+          rightMatches.forEach(m => mergeRightEditor.replaceRange(replaceText, m.from, m.to));
+        });
+      } else {
+        editor.operation(() => {
+          for (let i = searchMatches.length - 1; i >= 0; i--) {
+            searchMatches[i].editor.replaceRange(replaceText, searchMatches[i].from, searchMatches[i].to);
+          }
+        });
+      }
 
       clearSearchHighlights();
       updateStatus('Replaced ' + count + ' occurrence' + (count !== 1 ? 's' : ''));
@@ -2093,17 +2131,27 @@
       if (!hunk) return;
 
       if (direction === 'left') {
-        // Copy right content into left editor (insert, don't overwrite)
-        const insertAt = hunk.leftStart >= 0 ? hunk.leftStart : 0;
-        const pos = { line: insertAt, ch: 0 };
-        const text = hunk.rightLines.join('\n') + '\n';
-        mergeLeftEditor.replaceRange(text, pos, pos);
+        // Replace left content with right content
+        if (hunk.leftLines.length > 0 && hunk.leftStart >= 0) {
+          const from = { line: hunk.leftStart, ch: 0 };
+          const toLine = hunk.leftStart + hunk.leftLines.length - 1;
+          const to = { line: toLine, ch: mergeLeftEditor.getLine(toLine).length };
+          mergeLeftEditor.replaceRange(hunk.rightLines.join('\n'), from, to);
+        } else if (hunk.rightLines.length > 0) {
+          const insertAt = hunk.leftStart >= 0 ? hunk.leftStart : mergeLeftEditor.lineCount();
+          mergeLeftEditor.replaceRange(hunk.rightLines.join('\n') + '\n', { line: insertAt, ch: 0 });
+        }
       } else {
-        // Copy left content into right editor (insert, don't overwrite)
-        const insertAt = hunk.rightStart >= 0 ? hunk.rightStart : 0;
-        const pos = { line: insertAt, ch: 0 };
-        const text = hunk.leftLines.join('\n') + '\n';
-        mergeRightEditor.replaceRange(text, pos, pos);
+        // Replace right content with left content
+        if (hunk.rightLines.length > 0 && hunk.rightStart >= 0) {
+          const from = { line: hunk.rightStart, ch: 0 };
+          const toLine = hunk.rightStart + hunk.rightLines.length - 1;
+          const to = { line: toLine, ch: mergeRightEditor.getLine(toLine).length };
+          mergeRightEditor.replaceRange(hunk.leftLines.join('\n'), from, to);
+        } else if (hunk.leftLines.length > 0) {
+          const insertAt = hunk.rightStart >= 0 ? hunk.rightStart : mergeRightEditor.lineCount();
+          mergeRightEditor.replaceRange(hunk.leftLines.join('\n') + '\n', { line: insertAt, ch: 0 });
+        }
       }
 
       // Recompute diff

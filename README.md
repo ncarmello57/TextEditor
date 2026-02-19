@@ -25,15 +25,19 @@ A lightweight, cross-platform text editor built with Electron and CodeMirror 5.
 - Find with match highlighting and navigation
 - Replace one or replace all
 - Case-sensitive and regex toggle options
+- Works across both panels in merge mode with unified match navigation
 - Keyboard shortcuts: `Cmd/Ctrl+F` (find), `Cmd/Ctrl+H` (replace)
 
 ### File Merge
 - Side-by-side diff view with LCS-based line comparison
-- Bidirectional change pushing between left and right panels
+- Bidirectional change pushing (push to left / push to right) replaces destination content
+- Both panels are fully editable
 - Per-panel save buttons for independent file saving
 - Refresh diff after manual edits
 - Synchronized scrolling between panels
-- Cancel merge with unsaved changes warning
+- Search and replace works across both panels
+- Close button cancels merge with unsaved changes warning
+- Done button applies left panel content back to the active file
 
 ### Syntax Highlighting
 Supported languages: JavaScript, TypeScript, HTML, XML, CSS, SCSS, Less, JSON, C#, Java, C/C++, Python, SQL, Markdown, YAML
