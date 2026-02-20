@@ -24,6 +24,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      font-weight: 600;
     }
 
     #toolbar {
@@ -213,6 +214,39 @@
 
     .CodeMirror-selected {
       background-color: #264f78 !important;
+    }
+
+    /* Special characters (spaces, tabs, EOL) visual indicators */
+    .cm-ws-space, .cm-ws-space-b {
+      position: relative;
+    }
+    .cm-ws-space::after, .cm-ws-space-b::after {
+      content: '\00B7'; /* middle dot */
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #8f8f8f;
+      pointer-events: none;
+    }
+    .cm-ws-tab, .cm-ws-tab-b {
+      position: relative;
+    }
+    .cm-ws-tab::after, .cm-ws-tab-b::after {
+      content: '\2192'; /* rightwards arrow */
+      font-weight: bold;
+      position: absolute;
+      top: 0;
+      left: 1px;
+      color: #8f8f8f;
+      pointer-events: none;
+    }
+    /* End-of-line pilcrow via class on the CodeMirror wrapper */
+    .show-special-chars .CodeMirror-line::after {
+      content: '\00B6'; /* pilcrow ¶ */
+      color: #8f8f8f;
+      pointer-events: none;
     }
 
     .CodeMirror-focused .CodeMirror-selected {
@@ -764,6 +798,7 @@
     <button id="btn-format" data-tooltip="Format document">&#x2261;</button>
     <div class="toolbar-separator"></div>
     <button id="btn-wrap" data-tooltip="Toggle word wrap">&#x21A9;</button>
+    <button id="btn-special-chars" data-tooltip="Show special characters">&#xB6;</button>
     <div class="toolbar-separator"></div>
     <button id="btn-search" data-tooltip="Find and Replace">&#x1F50D;</button>
     <div class="toolbar-separator"></div>
@@ -775,6 +810,22 @@
       <option value="monokai">Monokai</option>
       <option value="dracula">Dracula</option>
       <option value="solarized-light">Solarized Light</option>
+    </select>
+    <div class="toolbar-separator"></div>
+    <select id="font-select">
+      <option value="Cascadia Code">Cascadia Code</option>
+      <option value="Fira Code">Fira Code</option>
+      <option value="JetBrains Mono">JetBrains Mono</option>
+      <option value="Consolas">Consolas</option>
+      <option value="Menlo">Menlo</option>
+      <option value="Courier New">Courier New</option>
+    </select>
+    <select id="font-weight-select">
+      <option value="300">300 &ndash; Light</option>
+      <option value="400" selected>400 &ndash; Regular</option>
+      <option value="500">500 &ndash; Medium</option>
+      <option value="600">600 &ndash; SemiBold</option>
+      <option value="700">700 &ndash; Bold</option>
     </select>
     <button id="btn-close" data-tooltip="Close file">&#x2715;</button>
   </div>
@@ -920,7 +971,26 @@
     let pendingCloseAction = null; // { type: 'close' | 'closeAll', fileId }
     let isLoadingContent = false; // Flag to suppress dirty marking during programmatic content changes
     let currentTheme = 'dark'; // Theme state
+    let currentFont = 'Cascadia Code';
+    let currentFontWeight = '400';
     let formatMappings = {}; // Extension-to-format mappings (e.g. { ".csproj": "xml" })
+    let showingSpecialChars = false;
+    let _wsIdx = 0; // alternates class names so CodeMirror never merges consecutive same-type tokens
+
+    // Overlay that marks spaces and tabs for the "show special chars" feature
+    const whitespaceOverlay = {
+      token(stream) {
+        const ch = stream.peek();
+        if (ch === ' ') { stream.next(); return _wsIdx++ % 2 === 0 ? 'ws-space' : 'ws-space-b'; }
+        if (ch === '\t') { stream.next(); return _wsIdx++ % 2 === 0 ? 'ws-tab' : 'ws-tab-b'; }
+        while (!stream.eol()) {
+          stream.next();
+          const next = stream.peek();
+          if (next === ' ' || next === '\t') break;
+        }
+        return null;
+      }
+    };
 
     // Initialize CodeMirror
     const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
@@ -971,6 +1041,7 @@
     document.getElementById('btn-redo').addEventListener('click', () => editor.redo());
     document.getElementById('btn-format').addEventListener('click', formatDocument);
     document.getElementById('btn-wrap').addEventListener('click', toggleWordWrap);
+    document.getElementById('btn-special-chars').addEventListener('click', toggleSpecialChars);
     document.getElementById('btn-search').addEventListener('click', toggleSearchPanel);
     document.getElementById('btn-merge').addEventListener('click', startMerge);
     document.getElementById('merge-refresh-btn').addEventListener('click', () => computeAndDisplayDiff());
@@ -1004,6 +1075,16 @@
     document.getElementById('theme-select').addEventListener('change', (e) => {
       applyTheme(e.target.value);
       ipcRenderer.invoke('save-preference', { key: 'theme', value: e.target.value });
+    });
+
+    document.getElementById('font-select').addEventListener('change', (e) => {
+      applyFont(e.target.value, currentFontWeight);
+      ipcRenderer.invoke('save-preference', { key: 'font', value: e.target.value });
+    });
+
+    document.getElementById('font-weight-select').addEventListener('change', (e) => {
+      applyFont(currentFont, e.target.value);
+      ipcRenderer.invoke('save-preference', { key: 'fontWeight', value: e.target.value });
     });
 
     // Modal buttons
@@ -1067,6 +1148,12 @@
     ipcRenderer.invoke('load-preferences').then(prefs => {
       if (prefs && prefs.theme) {
         applyTheme(prefs.theme);
+      }
+      if (prefs && prefs.specialChars) {
+        toggleSpecialChars();
+      }
+      if (prefs && prefs.font) {
+        applyFont(prefs.font, prefs.fontWeight || '400');
       }
     });
 
@@ -1344,6 +1431,27 @@
       btn.setAttribute('data-tooltip', !current ? 'Word wrap on' : 'Toggle word wrap');
     }
 
+    function toggleSpecialChars() {
+      showingSpecialChars = !showingSpecialChars;
+      const editors = [
+        { cm: editor },
+        { cm: mergeLeftEditor },
+        { cm: mergeRightEditor }
+      ];
+      for (const { cm } of editors) {
+        if (showingSpecialChars) {
+          cm.addOverlay(whitespaceOverlay);
+        } else {
+          cm.removeOverlay(whitespaceOverlay);
+        }
+        cm.getWrapperElement().classList.toggle('show-special-chars', showingSpecialChars);
+      }
+      const btn = document.getElementById('btn-special-chars');
+      btn.classList.toggle('active', showingSpecialChars);
+      btn.setAttribute('data-tooltip', showingSpecialChars ? 'Special characters on' : 'Show special characters');
+      ipcRenderer.invoke('save-preference', { key: 'specialChars', value: showingSpecialChars });
+    }
+
     const themeMap = {
       'dark': { cm: 'material-darker', bodyClass: '' },
       'light': { cm: 'default', bodyClass: 'light-theme' },
@@ -1364,6 +1472,29 @@
       }
       editor.setOption('theme', theme.cm);
       document.getElementById('theme-select').value = themeName;
+    }
+
+    const fontFamilyMap = {
+      'Cascadia Code':  "'Cascadia Code', monospace",
+      'Fira Code':      "'Fira Code', monospace",
+      'JetBrains Mono': "'JetBrains Mono', monospace",
+      'Consolas':       "Consolas, monospace",
+      'Menlo':          "Menlo, Monaco, monospace",
+      'Courier New':    "'Courier New', monospace",
+    };
+
+    function applyFont(fontName, weight) {
+      currentFont = fontName;
+      currentFontWeight = weight;
+      const family = fontFamilyMap[fontName] || "'Cascadia Code', monospace";
+      for (const cm of [editor, mergeLeftEditor, mergeRightEditor]) {
+        const el = cm.getWrapperElement();
+        el.style.fontFamily = family;
+        el.style.fontWeight = weight;
+        cm.refresh();
+      }
+      document.getElementById('font-select').value = fontName;
+      document.getElementById('font-weight-select').value = weight;
     }
 
     function getFormatType(file) {
