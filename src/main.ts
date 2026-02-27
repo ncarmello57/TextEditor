@@ -127,7 +127,8 @@ function createWindow(): void {
     minHeight: 400,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      spellcheck: true
     },
     title: 'EGIEdit'
   });
@@ -217,6 +218,7 @@ async function openFile(): Promise<void> {
     filters: [
       { name: 'All Files', extensions: ['*'] },
       { name: 'Text Files', extensions: ['txt'] },
+      { name: 'Markdown Files', extensions: ['md', 'markdown'] },
       { name: 'HTML Files', extensions: ['html', 'htm'] },
       { name: 'XML Files', extensions: ['xml', 'xaml'] },
       { name: 'JSON Files', extensions: ['json'] },
@@ -417,6 +419,7 @@ ipcMain.handle('reload-file-dialog', async () => {
     filters: [
       { name: 'All Files', extensions: ['*'] },
       { name: 'Text Files', extensions: ['txt'] },
+      { name: 'Markdown Files', extensions: ['md', 'markdown'] },
       { name: 'HTML Files', extensions: ['html', 'htm'] },
       { name: 'XML Files', extensions: ['xml', 'xaml'] },
       { name: 'JSON Files', extensions: ['json'] },
@@ -438,35 +441,65 @@ ipcMain.handle('reload-file-dialog', async () => {
   return null;
 });
 
-app.whenReady().then(() => {
-  createWindow();
+// Single-instance lock: if another instance is already running, hand off the
+// file path to it and quit. Must be acquired before app.whenReady().
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  // Primary instance: a second instance launched (e.g. user double-clicked a
+  // file while the app was already open). Bring our window forward and open
+  // the file that was passed to the second instance.
+  app.on('second-instance', async (_event, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
 
-  // Check for file path from command-line args (all platforms) or pending open-file event (macOS)
-  const fileArg = pendingFilePath || process.argv.find(arg =>
-    !arg.startsWith('-') && arg !== '.' && arg !== process.execPath && fs.existsSync(arg) && fs.statSync(arg).isFile()
-  );
+    const fileArg = argv.find(arg =>
+      !arg.startsWith('-') && arg !== '.' && fs.existsSync(arg) && fs.statSync(arg).isFile()
+    );
 
-  if (fileArg && mainWindow) {
-    mainWindow.webContents.once('did-finish-load', async () => {
+    if (fileArg && mainWindow) {
       try {
         const fileData = await readFileWithEncoding(fileArg);
-        mainWindow?.webContents.send('file-opened', fileData);
+        mainWindow.webContents.send('file-opened', fileData);
         addRecentFile(fileArg);
       } catch {
         // file could not be read
       }
-    });
-  }
-});
+    }
+  });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) {
+  app.whenReady().then(() => {
     createWindow();
-  }
-});
+
+    // Check for file path from command-line args (all platforms) or pending open-file event (macOS)
+    const fileArg = pendingFilePath || process.argv.find(arg =>
+      !arg.startsWith('-') && arg !== '.' && arg !== process.execPath && fs.existsSync(arg) && fs.statSync(arg).isFile()
+    );
+
+    if (fileArg && mainWindow) {
+      mainWindow.webContents.once('did-finish-load', async () => {
+        try {
+          const fileData = await readFileWithEncoding(fileArg);
+          mainWindow?.webContents.send('file-opened', fileData);
+          addRecentFile(fileArg);
+        } catch {
+          // file could not be read
+        }
+      });
+    }
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('activate', () => {
+    if (mainWindow === null) {
+      createWindow();
+    }
+  });
+}
