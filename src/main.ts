@@ -444,7 +444,7 @@ ipcMain.handle('reload-file-dialog', async () => {
 // Single-instance lock: if another instance is already running, hand off the
 // file path to it and quit. Must be acquired before app.whenReady().
 if (!app.requestSingleInstanceLock()) {
-  app.quit();
+  app.exit(0);
 } else {
   // Primary instance: a second instance launched (e.g. user double-clicked a
   // file while the app was already open). Bring our window forward and open

@@ -1231,10 +1231,12 @@
     }
 
     function switchToFile(id) {
-      // Save current file content
+      // Save current file content, scroll position, and cursor
       const currentFile = getActiveFile();
       if (currentFile) {
         currentFile.content = editor.getValue();
+        currentFile.scrollInfo = editor.getScrollInfo();
+        currentFile.cursorPos = editor.getCursor();
       }
 
       activeFileId = id;
@@ -1250,6 +1252,18 @@
         document.getElementById('editor-container').classList.remove('hidden');
         document.getElementById('no-file-message').classList.add('hidden');
         editor.refresh();
+
+        // Restore cursor without auto-scrolling, then restore the saved scroll
+        // position in the next frame (after CodeMirror has fully laid out the
+        // new content).
+        if (file.cursorPos) {
+          editor.setCursor(file.cursorPos, null, { scroll: false });
+        }
+        if (file.scrollInfo) {
+          requestAnimationFrame(() => {
+            editor.scrollTo(file.scrollInfo.left, file.scrollInfo.top);
+          });
+        }
 
         updateTitle();
         updateEncoding(file.encoding.toUpperCase());
